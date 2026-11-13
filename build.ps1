@@ -427,7 +427,8 @@ foreach ($rid in $Runtime) {
     Invoke-Native dotnet (@('publish', $appProject, '-c', $Configuration, '-r', $rid, '--no-self-contained', '--no-restore', '-o', $publishDir) + $versionProperties)
 
     if ($signTool) {
-        # Sign only our own binaries. The .NET runtime files already carry Microsoft's signature.
+        # Sign only our own binaries. The folder holds no .NET runtime, and its Microsoft.Extensions package DLLs already
+        # carry Microsoft's signature.
         $ours = Get-ChildItem $publishDir -File |
             Where-Object { $_.Name -eq "$product.exe" -or $_.Name -like 'WSLProxy.*.dll' -or $_.Name -eq "$product.dll" }
         Write-Host "==> Signing $($ours.Count) files for $rid"
