@@ -37,8 +37,8 @@ public sealed class TrayIcon : IDisposable
     {
         _iconFiles = new()
         {
-            [Glyph.Black] = LoadResource("WSLProxy.UI.Tray.Black.ico"),
-            [Glyph.White] = LoadResource("WSLProxy.UI.Tray.White.ico"),
+            [Glyph.LightTheme] = LoadResource("WSLProxy.UI.Tray.LightTheme.ico"),
+            [Glyph.DarkTheme] = LoadResource("WSLProxy.UI.Tray.DarkTheme.ico"),
         };
 
         // A hidden top-level window: message-only windows don't get the TaskbarCreated or settings-change broadcasts.
