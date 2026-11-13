@@ -33,6 +33,22 @@ public sealed class TrayTests
     }
 
     [TestMethod]
+    [DataRow(NativeMethods.ABE_BOTTOM, 48, 0, 0, 2560, 1392, DisplayName = "Bottom")]
+    [DataRow(NativeMethods.ABE_TOP, 48, 0, 48, 2560, 1440, DisplayName = "Top")]
+    [DataRow(NativeMethods.ABE_LEFT, 60, 60, 0, 2560, 1440, DisplayName = "Left")]
+    [DataRow(NativeMethods.ABE_RIGHT, 60, 0, 0, 2500, 1440, DisplayName = "Right")]
+    [DataRow(NativeMethods.ABE_BOTTOM, 0, 0, 0, 2560, 1440, DisplayName = "No thickness is ignored")]
+    [DataRow(NativeMethods.ABE_BOTTOM, 900, 0, 0, 2560, 1440, DisplayName = "Over half the monitor is ignored")]
+    public void Flyout_keeps_clear_of_an_auto_hide_taskbar_the_work_area_leaves_out(uint edge, int thickness, int left, int top, int right, int bottom)
+    {
+        var monitor = new NativeMethods.RECT { Left = 0, Top = 0, Right = 2560, Bottom = 1440 };
+
+        var work = FlyoutWindow.AvoidAutoHideBars(monitor, monitor, [(edge, thickness)]);
+
+        Assert.AreEqual((left, top, right, bottom), (work.Left, work.Top, work.Right, work.Bottom));
+    }
+
+    [TestMethod]
     public void Flyout_taller_than_the_work_area_and_two_gaps_keeps_inside_it_without_them()
     {
         var work = new NativeMethods.RECT { Left = 0, Top = 0, Right = 1920, Bottom = 510 };
