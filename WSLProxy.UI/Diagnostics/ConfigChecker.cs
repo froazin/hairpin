@@ -20,6 +20,8 @@ public sealed class ConfigChecker : IDisposable
     private readonly string _wslConfigPath;
     private readonly Lock _lock = new();
     private readonly Timer _debounce;
+    private readonly Lock _checkLock = new();
+    private int _pending;
     private FileSystemWatcher? _watcher;
     private IReadOnlyList<ConfigProblem> _problems = [];
 
@@ -80,7 +82,17 @@ public sealed class ConfigChecker : IDisposable
     /// Checks again on a thread-pool thread after <paramref name="delay"/>. Editors save in bursts, so a new request
     /// replaces one that hasn't run yet.
     /// </summary>
-    public void CheckSoon(TimeSpan delay) => _debounce.Change(delay, Timeout.InfiniteTimeSpan);
+    public void CheckSoon(TimeSpan delay)
+    {
+        try
+        {
+            _debounce.Change(delay, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+            // A file event or a click that arrives while the app shuts down.
+        }
+    }
 
     /// <inheritdoc />
     public void Dispose()
@@ -89,7 +101,25 @@ public sealed class ConfigChecker : IDisposable
         _debounce.Dispose();
     }
 
+    // Runs one check at a time. A request that arrives during a check makes it run once more afterwards, so a slower,
+    // older read can never overwrite a newer one.
     private void Check()
+    {
+        if (Interlocked.Exchange(ref _pending, 1) == 1)
+        {
+            return;
+        }
+
+        lock (_checkLock)
+        {
+            while (Interlocked.Exchange(ref _pending, 0) == 1)
+            {
+                CheckOnce();
+            }
+        }
+    }
+
+    private void CheckOnce()
     {
         var problems = new List<ConfigProblem>();
         if (ConfigChecks.CheckIpv6(ReadDword(Tcpip6Key, "DisabledComponents")) is { } ipv6)
