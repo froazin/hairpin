@@ -41,7 +41,8 @@
 
         <ListView x:Name="EntriesList" FontFamily="Cascadia Mono, Consolas" FontSize="12"
                   VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
-                  ScrollViewer.HorizontalScrollBarVisibility="Auto" AutomationProperties.Name="Recent log lines">
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled" SizeChanged="OnListSizeChanged"
+                  AutomationProperties.Name="Recent log lines">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Static GridView.GridViewItemContainerStyleKey}}">
                     <Setter Property="Padding" Value="4,1" />
@@ -64,7 +65,14 @@
                     <GridViewColumn Header="Time" Width="100" DisplayMemberBinding="{Binding Time}" />
                     <GridViewColumn Header="Level" Width="64" DisplayMemberBinding="{Binding Level}" />
                     <GridViewColumn Header="Source" Width="140" DisplayMemberBinding="{Binding Source}" />
-                    <GridViewColumn Header="Message" Width="560" DisplayMemberBinding="{Binding Message}" />
+                    <!-- The message wraps, and the column takes the width the others leave, so the whole message shows. -->
+                    <GridViewColumn Header="Message" Width="560">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                 </GridView>
             </ListView.View>
         </ListView>

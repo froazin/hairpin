@@ -90,6 +90,20 @@ public partial class LogWindow : Window
 
     private void OnFollowChanged(object sender, RoutedEventArgs e) => Refresh();
 
+    // Gives the message column the width the other columns leave, less the vertical scroll bar and the row padding, so
+    // messages wrap rather than run off to the right.
+    private void OnListSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (EntriesList.View is not GridView { Columns.Count: > 0 } view)
+        {
+            return;
+        }
+
+        var message = view.Columns[^1];
+        var others = view.Columns.Take(view.Columns.Count - 1).Sum(column => column.ActualWidth);
+        message.Width = Math.Max(160, EntriesList.ActualWidth - others - SystemParameters.VerticalScrollBarWidth - 16);
+    }
+
     private void OnCopyClick(object sender, RoutedEventArgs e)
     {
         try
