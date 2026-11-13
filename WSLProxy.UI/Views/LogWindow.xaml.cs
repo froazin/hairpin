@@ -51,7 +51,16 @@ public partial class LogWindow : Window
     private void OnRefreshTick(object? sender, EventArgs e)
     {
         _refreshTimer.Stop();
-        Refresh();
+        if (FollowBox.IsChecked == true)
+        {
+            Refresh();
+            return;
+        }
+
+        // Swapping the rows would jump the list back to the top while the user reads, so hold new lines back.
+        Interlocked.Exchange(ref _dirty, 0);
+        SummaryText.Text = string.Format(CultureInfo.CurrentCulture,
+            "Showing {0:N0} lines. New lines are held back until you turn Follow new lines on again.", _rows.Count);
     }
 
     private void Refresh()
@@ -78,13 +87,7 @@ public partial class LogWindow : Window
         }
     }
 
-    private void OnFollowChanged(object sender, RoutedEventArgs e)
-    {
-        if (_rows.Count > 0)
-        {
-            EntriesList.ScrollIntoView(_rows[^1]);
-        }
-    }
+    private void OnFollowChanged(object sender, RoutedEventArgs e) => Refresh();
 
     private void OnCopyClick(object sender, RoutedEventArgs e)
     {
@@ -106,7 +109,11 @@ public partial class LogWindow : Window
         }
     }
 
-    private void OnClearClick(object sender, RoutedEventArgs e) => _store.Clear();
+    private void OnClearClick(object sender, RoutedEventArgs e)
+    {
+        _store.Clear();
+        Refresh();
+    }
 
     private void OnOpenFolderClick(object sender, RoutedEventArgs e) => OpenFolder();
 }

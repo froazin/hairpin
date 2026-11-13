@@ -86,11 +86,11 @@ A broken settings file never stops the app. At start-up, a file that isn't valid
 Every log line goes to two places, through `Microsoft.Extensions.Logging` providers that share `LogFormat`, so they say the same thing:
 
 - **Files:** `FileLoggerProvider` writes one file per day, `%LOCALAPPDATA%\WSLProxy\logs\relay-yyyyMMdd.log`, in UTC, from a background queue so logging never blocks the relay. It keeps `App:LogRetentionDays` days (7 by default).
-- **Memory:** `MemoryLoggerProvider` adds each line to `LogStore`, which the log window shows. `LogStore` is a `RingBuffer` of `App:LogWindowLines` lines (1,000 by default, from 100 to 10,000) that drops the oldest line when it's full, and it cuts each message to 1,000 characters, so it holds about 2 MB at the most. The log window redraws at most four times a second, and only while it's open.
+- **Memory:** `MemoryLoggerProvider` adds each line to `LogStore`, which the log window shows. `LogStore` is a `RingBuffer` of `App:LogWindowLines` lines (1,000 by default, from 100 to 10,000) that drops the oldest line when it's full, and it cuts each message to 1,000 characters, so it holds about 2 MB at the most. The log window redraws at most four times a second, and only while it's open. While its Follow new lines box is off, it holds new lines back, so the list doesn't jump while the user reads.
 
 Exceptions are logged by type only. Request lines carry `host:port` and status, which is a browsing history of sorts: keep the retention short.
 
-The flyout's debug logging switch turns on Debug-level lines, such as each accepted connection and each server connection opened or reused, until the app restarts. `DebugLoggingSwitch` is the last configuration source: while it's on, it sets `Logging:LogLevel:Default` and `Logging:LogLevel:WSLProxy` to `Debug` and raises a reload, so the logging filters change at once for both destinations. It keeps its values only in memory, so debug logging is always off at start-up.
+The flyout's debug logging switch turns on Debug-level lines, such as each accepted connection and each server connection opened or reused, until the app restarts. `DebugLoggingSwitch` is the last configuration source: while it's on, it sets `Logging:LogLevel:Default` and `Logging:LogLevel:WSLProxy` to `Debug` and raises a reload, so the logging filters change at once for both destinations. The reload also re-delivers the relay's options, which `RelayService` ignores when they haven't changed. It keeps its values only in memory, so debug logging is always off at start-up.
 
 ## Decisions
 
