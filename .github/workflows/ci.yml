@@ -1,5 +1,5 @@
 ---
-name: V1 full
+name: CI
 
 # Builds and tests each pull request, and builds what the release workflow publishes when it calls this one on a push
 # to main. Only a pull request gets Claude's code review. A change only to the docs or agent settings changes nothing
