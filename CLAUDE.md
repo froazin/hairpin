@@ -1,4 +1,4 @@
-# WSL Proxy Relay
+# Hairpin
 
 A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on `127.0.0.1` for WSL2 in mirrored networking mode. WSL traffic then leaves the machine from a Windows process, so endpoint network agents handle it.
 
@@ -13,12 +13,12 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 
 | Path | Holds |
 | --- | --- |
-| `WSLProxy.App/` | The executable, `WSLProxyRelay.exe`. It wires the relay and the tray UI into one Generic Host, and ships `appsettings.json`, which `appsettings.schema.json` describes for editors. Change both together |
-| `WSLProxy.Relay/` | The proxy engine, as a class library: listener, HTTP parsing, routing and the relay service. No UI and no Windows-only APIs |
-| `WSLProxy.UI/` | The tray icon, flyout and settings window, as a WPF class library |
-| `WSLProxy.Relay.Tests/` | MSTest tests of the relay engine |
-| `WSLProxy.App.Tests/`, `WSLProxy.UI.Tests/` | MSTest tests of the executable's start-up and logging, and of the tray UI's logic, without WPF windows or Win32 calls |
-| `Assets/` | Icons: `wslproxy-logo.ico` is the exe icon, and `wslproxy-light-theme.ico` and `wslproxy-dark-theme.ico` are the tray glyphs for a light and a dark taskbar |
+| `Hairpin.App/` | The executable, `Hairpin.exe`. It wires the relay and the tray UI into one Generic Host, and ships `appsettings.json`, which `appsettings.schema.json` describes for editors. Change both together |
+| `Hairpin.Engine/` | The proxy engine, as a class library: listener, HTTP parsing, routing and the relay service. No UI and no Windows-only APIs |
+| `Hairpin.UI/` | The tray icon, flyout and settings window, as a WPF class library |
+| `Hairpin.Engine.Tests/` | MSTest tests of the relay engine |
+| `Hairpin.App.Tests/`, `Hairpin.UI.Tests/` | MSTest tests of the executable's start-up and logging, and of the tray UI's logic, without WPF windows or Win32 calls |
+| `Assets/` | Icons: `hairpin-logo.ico` is the exe icon, and `hairpin-light-theme.ico` and `hairpin-dark-theme.ico` are the tray glyphs for a light and a dark taskbar |
 | `build.ps1` | The local build: version, test, publish, sign and checksums. With `-Msix`, it builds a signed MSIX bundle instead of the zips. CI never uses `-Msix` |
 | `Packaging/` | `AppxManifest.xml`, the MSIX package manifest template that `build.ps1 -Msix` fills in. Read [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) before you change it or the MSIX build |
 | `Docs/` | Design docs for engineers changing the code |
@@ -27,8 +27,8 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `.github/workflows/release.yml`, `GitVersion.yaml` | On a push to `main`, calls CI, then tags each change that bumps the version as `vX.Y.Z`, with no GitHub release or packages. Read [Docs/releases.md](Docs/releases.md) before you change them |
 
 - Before you change anything, read [Docs/problem.md](Docs/problem.md) for why the app exists.
-- Before you change `WSLProxy.Relay/` or its tests, read [Docs/relay.md](Docs/relay.md).
-- Before you change `WSLProxy.App/` or `WSLProxy.UI/`, read [Docs/tray-ui.md](Docs/tray-ui.md).
+- Before you change `Hairpin.Engine/` or its tests, read [Docs/relay.md](Docs/relay.md).
+- Before you change `Hairpin.App/` or `Hairpin.UI/`, read [Docs/tray-ui.md](Docs/tray-ui.md).
 
 ## Conventions
 
@@ -45,8 +45,8 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 Run these before you push. CI runs `build.ps1` in Windows PowerShell 5.1, which does all of them:
 
 ```powershell
-dotnet build WSLProxy.slnx      # warnings are errors
-dotnet test --solution WSLProxy.slnx
+dotnet build Hairpin.slnx       # warnings are errors
+dotnet test --solution Hairpin.slnx
 ./build.ps1                     # version, locked restore, build, test, publish and checksums
 ```
 
@@ -56,8 +56,8 @@ When you review a change locally, follow `REVIEW.md` as it is on `main` (`git sh
 
 | Repository | Path | GitHub | Visibility | Default branch | Kind |
 | --- | --- | --- | --- | --- | --- |
-| Source | `.` | `froazin/wsl-proxy-relay` | Private, planned to be public | `main` | Code: PRs, squash-merged |
-| Wiki | `../wsl-proxy-relay.wiki` | `froazin/wsl-proxy-relay.wiki` | Follows Source | `master` | GitHub wiki: direct commits, and a push publishes |
+| Source | `.` | `froazin/hairpin` | Private, planned to be public | `main` | Code: PRs, squash-merged |
+| Wiki | `../hairpin.wiki` | `froazin/hairpin.wiki` | Follows Source | `master` | GitHub wiki: direct commits, and a push publishes |
 
 - **Commit scopes:** `relay`, `ui`, `app`, `build`, `ci`, `docs`, `claude`, `deps`.
 - **Feature flags:** none yet.

@@ -1,6 +1,6 @@
 # Tray app
 
-How the executable and the tray UI work: start-up, the notification area icon, the flyout, the settings window, settings files, start at sign-in and logging. It's for engineers changing [WSLProxy.App/](../WSLProxy.App/) or [WSLProxy.UI/](../WSLProxy.UI/). The relay itself is in [relay.md](relay.md).
+How the executable and the tray UI work: start-up, the notification area icon, the flyout, the settings window, settings files, start at sign-in and logging. It's for engineers changing [Hairpin.App/](../Hairpin.App/) or [Hairpin.UI/](../Hairpin.UI/). The relay itself is in [relay.md](relay.md).
 
 ## Contents
 
@@ -16,10 +16,10 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 
 ## Start-up
 
-`Program.Main` in `WSLProxy.App`, on an STA thread:
+`Program.Main` in `Hairpin.App`, on an STA thread:
 
 1. Asks Windows whether it runs from the MSIX package. `PackageIdentity.FamilyName` calls `GetCurrentPackageFamilyName` and returns null for the zip build, or on any error. The answer picks the data folder, which [Settings files](#settings-files) describes, and how the app [starts at sign-in](#start-at-sign-in).
-1. Takes a mutex named `Local\WSLProxyRelay-<user SID>`. If another instance holds it, the new one exits quietly.
+1. Takes a mutex named `Local\Hairpin-<user SID>`. If another instance holds it, the new one exits quietly.
 1. Builds a Generic Host with `Host.CreateEmptyApplicationBuilder`, so no environment variables, command-line arguments or user secrets can override settings. Configuration is `appsettings.json` from the install folder, then the user's settings file.
 1. Registers the relay (`AddRelay`), the settings store, start-at-sign-in and `TrayApplication`, then starts the host, which starts `RelayService`.
 1. Applies the start-at-sign-in setting. `StartupRegistration` is disabled in Debug builds and in the MSIX package, so neither touches the registry.
@@ -96,20 +96,20 @@ It checks at start-up, half a second after `.wslconfig` changes, and each time t
 
 The data folder holds `settings.json`, the `logs` folder and `crash.log`. `Program.DataDirectory` picks it:
 
-- **Zip build:** `%LOCALAPPDATA%\WSLProxy`.
+- **Zip build:** `%LOCALAPPDATA%\Hairpin`.
 - **MSIX package:** the package's own folder, `%LOCALAPPDATA%\Packages\<package family name>\LocalState`. Windows redirects new files a packaged app writes anywhere else under `%LOCALAPPDATA%` to a private location that Explorer can't see, but not this folder, so Open log folder and the paths the app shows still work. Windows deletes the folder when the user uninstalls the package.
 
-The two builds don't share settings: a user who moves from the zip build to the package starts with the defaults. The rest of this doc writes `%LOCALAPPDATA%\WSLProxy` for the data folder.
+The two builds don't share settings: a user who moves from the zip build to the package starts with the defaults. The rest of this doc writes `%LOCALAPPDATA%\Hairpin` for the data folder.
 
-[appsettings.schema.json](../WSLProxy.App/appsettings.schema.json) describes both files, with each setting's range and default, and `.vscode/settings.json` gives it to VS Code for completion and checks. It doesn't ship. `SettingsSchemaTests` fails when it and `appsettings.json` disagree about a key or a default, so add a new setting to both.
+[appsettings.schema.json](../Hairpin.App/appsettings.schema.json) describes both files, with each setting's range and default, and `.vscode/settings.json` gives it to VS Code for completion and checks. It doesn't ship. `SettingsSchemaTests` fails when it and `appsettings.json` disagree about a key or a default, so add a new setting to both.
 
 The user's file is layered over `appsettings.json` and reloaded when it changes. `UserSettingsStore` validates before saving, keeps any keys it doesn't own, and writes through to disk in a temporary file that it then moves into place. The default bypass list is empty on purpose, because configuration merges arrays by index. Versions up to 0.4 had one upstream proxy, under `Relay:Upstream:Host` and `Port`. Nothing reads those keys now, and saving from the settings window removes them.
 
-A broken settings file never stops the app. At start-up, a file that isn't valid JSON is renamed `settings.json.invalid-<time>` and the defaults are used. While running, a file that can't be read or bound is ignored and the last good settings stay in force (`AddSafeOptions` never throws). Anything that still escapes is written to `%LOCALAPPDATA%\WSLProxy\crash.log`, type and stack trace only, and shown to the user.
+A broken settings file never stops the app. At start-up, a file that isn't valid JSON is renamed `settings.json.invalid-<time>` and the defaults are used. While running, a file that can't be read or bound is ignored and the last good settings stay in force (`AddSafeOptions` never throws). Anything that still escapes is written to `%LOCALAPPDATA%\Hairpin\crash.log`, type and stack trace only, and shown to the user.
 
 ## Start at sign-in
 
-`StartupRegistration` writes `"<exe>" --background` to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` under the value name `WSL Proxy Relay`, which needs no admin rights.
+`StartupRegistration` writes `"<exe>" --background` to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` under the value name `Hairpin`, which needs no admin rights.
 
 - At start-up it registers only if the user hasn't turned the entry off in Task Manager (`...\Explorer\StartupApproved\Run`), and the entry doesn't already name another copy that still exists. The `StartupApproved` value isn't documented by Microsoft, so it's read defensively.
 - When the user turns the setting on in the settings window, it registers and deletes the `StartupApproved` value, because the user has just asked for it.
@@ -125,12 +125,12 @@ The MSIX package works differently. Windows virtualises a packaged app's writes 
 
 Every log line goes to two places, through `Microsoft.Extensions.Logging` providers that share `LogFormat`, so they say the same thing:
 
-- **Files:** `FileLoggerProvider` writes one file per day, `%LOCALAPPDATA%\WSLProxy\logs\relay-yyyyMMdd.log`, in UTC, from a background queue so logging never blocks the relay. It keeps `App:LogRetentionDays` days (7 by default).
+- **Files:** `FileLoggerProvider` writes one file per day, `%LOCALAPPDATA%\Hairpin\logs\relay-yyyyMMdd.log`, in UTC, from a background queue so logging never blocks the relay. It keeps `App:LogRetentionDays` days (7 by default).
 - **Memory:** `MemoryLoggerProvider` adds each line to `LogStore`, which the log window shows. `LogStore` is a `RingBuffer` of `App:LogWindowLines` lines (1,000 by default, from 100 to 10,000) that drops the oldest line when it's full, and it cuts each message to 1,000 characters, so it holds about 2 MB with the default 1,000 lines and about 20 MB at the 10,000-line maximum. The log window redraws at most four times a second, and only while it's open. While its Follow new lines box is off, it holds new lines back, so the list doesn't jump while the user reads.
 
 Exceptions are logged by type only. Request lines carry `host:port` and status, which is a browsing history of sorts: keep the retention short.
 
-The settings window's debug logging switch turns on Debug-level lines, such as each accepted connection and each server connection opened or reused, until the app restarts. `DebugLoggingSwitch` is the last configuration source: while it's on, it sets `Logging:LogLevel:Default` and `Logging:LogLevel:WSLProxy` to `Debug` and raises a reload, so the logging filters change at once for both destinations. The reload also re-delivers the relay's options, which `RelayService` ignores when they haven't changed. It keeps its values only in memory, so debug logging is always off at start-up.
+The settings window's debug logging switch turns on Debug-level lines, such as each accepted connection and each server connection opened or reused, until the app restarts. `DebugLoggingSwitch` is the last configuration source: while it's on, it sets `Logging:LogLevel:Default` and `Logging:LogLevel:Hairpin` to `Debug` and raises a reload, so the logging filters change at once for both destinations. The reload also re-delivers the relay's options, which `RelayService` ignores when they haven't changed. It keeps its values only in memory, so debug logging is always off at start-up.
 
 ## Decisions
 

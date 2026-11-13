@@ -1,14 +1,14 @@
 {
-  "dotnet.defaultSolution": "WSLProxy.slnx",
+  "dotnet.defaultSolution": "Hairpin.slnx",
   "files.eol": "\n",
   "json.schemas": [
     {
       "fileMatch": [
-        "**/WSLProxy.App/appsettings.json",
+        "**/Hairpin.App/appsettings.json",
         "**/Artifacts/Publish/*/appsettings.json",
-        "**/WSLProxy/settings.json"
+        "**/Hairpin/settings.json"
       ],
-      "url": "./WSLProxy.App/appsettings.schema.json"
+      "url": "./Hairpin.App/appsettings.schema.json"
     }
   ]
 }

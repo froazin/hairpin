@@ -1,0 +1,13 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="ARM64" />
+  </Configurations>
+  <Project Path="Hairpin.App/Hairpin.App.csproj" />
+  <Project Path="Hairpin.App.Tests/Hairpin.App.Tests.csproj" />
+  <Project Path="Hairpin.Engine/Hairpin.Engine.csproj" />
+  <Project Path="Hairpin.Engine.Tests/Hairpin.Engine.Tests.csproj" />
+  <Project Path="Hairpin.UI/Hairpin.UI.csproj" />
+  <Project Path="Hairpin.UI.Tests/Hairpin.UI.Tests.csproj" />
+</Solution>

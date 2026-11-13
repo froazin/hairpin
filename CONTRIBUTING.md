@@ -1,6 +1,6 @@
 # Contributing
 
-How to report a problem, propose a change, and build and test WSL Proxy Relay. For how the code works, read the design docs in [Docs/](Docs/).
+How to report a problem, propose a change, and build and test Hairpin. For how the code works, read the design docs in [Docs/](Docs/).
 
 ## Contents
 
@@ -26,8 +26,8 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 
 | Task | Command |
 | --- | --- |
-| Build | `dotnet build WSLProxy.slnx` |
-| Test | `dotnet test --solution WSLProxy.slnx` |
+| Build | `dotnet build Hairpin.slnx` |
+| Test | `dotnet test --solution Hairpin.slnx` |
 | Full build: version, test, publish and checksums | `./build.ps1` |
 | Full build without tests | `./build.ps1 -SkipTests` |
 | Sign the binaries too | `./build.ps1 -CertificateThumbprint <thumbprint> -TimestampUrl <rfc3161-url>` |
@@ -36,20 +36,20 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 `build.ps1` runs in Windows PowerShell 5.1 or PowerShell 7. It writes to `Artifacts/`:
 
 - `Publish/<runtime>/` and `Publish/<runtime>-self-contained/`: a framework-dependent folder, which runs on the .NET 10 Desktop Runtime installed on the machine, and a self-contained folder, which carries its own runtime, for `win-x64` and `win-arm64`.
-- `WSLProxyRelay-<version>-<runtime>.zip` and `WSLProxyRelay-<version>-<runtime>-self-contained.zip`: each folder, zipped.
+- `Hairpin-<version>-<runtime>.zip` and `Hairpin-<version>-<runtime>-self-contained.zip`: each folder, zipped.
 - `SHA256SUMS.txt`: a SHA-256 checksum for each zip, in `sha256sum` format.
 
 Signing needs `signtool.exe` from the Windows SDK and a code signing certificate in your certificate store. Without a thumbprint, the script warns and leaves the binaries unsigned.
 
-With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` and `WSLProxyRelay-<version>-self-contained.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundles. It also needs `makeappx.exe` and `makepri.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
+With `-Msix`, the script writes `Hairpin-<version>.msixbundle` and `Hairpin-<version>-self-contained.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundles. It also needs `makeappx.exe` and `makepri.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
 
 ### Build a release
 
-A release is a `v<version>` tag, with no packages. The [Tags page](https://github.com/froazin/wsl-proxy-relay/tags) lists them. To build one, clone its tag with Git, then run the full build from the clone:
+A release is a `v<version>` tag, with no packages. The [Tags page](https://github.com/froazin/hairpin/tags) lists them. To build one, clone its tag with Git, then run the full build from the clone:
 
 ```powershell
-git clone --branch v<version> https://github.com/froazin/wsl-proxy-relay.git
-cd wsl-proxy-relay
+git clone --branch v<version> https://github.com/froazin/hairpin.git
+cd hairpin
 ./build.ps1
 ```
 
@@ -64,12 +64,12 @@ To test the MSIX build without a real code signing certificate, make a self-sign
 ```powershell
 $cert = New-SelfSignedCertificate -Type Custom -KeyUsage DigitalSignature -CertStoreLocation Cert:\CurrentUser\My -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}") -Subject "CN=<publisher-name>"
 $cert.Thumbprint
-Export-Certificate -Cert $cert -FilePath <path>\wslproxy-test.cer
+Export-Certificate -Cert $cert -FilePath <path>\hairpin-test.cer
 ```
 
 - Pass the thumbprint to `build.ps1` with `-CertificateThumbprint`. Signing still needs `-TimestampUrl`, so give it any RFC 3161 timestamp server.
 - Don't add the test certificate to a Trusted Root store: that would trust anything signed with its key. `build.ps1` sees that the certificate is self-signed and skips `signtool verify`, which needs a trusted root, with a warning.
-- To install the bundle on a test machine, trust the certificate there from an elevated session: `Import-Certificate -FilePath <path>\wslproxy-test.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`.
+- To install the bundle on a test machine, trust the certificate there from an elevated session: `Import-Certificate -FilePath <path>\hairpin-test.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`.
 - Remove the certificate from each store when you've finished testing. Never use a self-signed certificate for a package you give to anyone else.
 
 Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block unsigned executables, and does so unpredictably for new builds (observed). The test project builds no `.exe` for this reason: tests run through the signed `dotnet` host. An unsigned build of the app can be blocked too.
@@ -89,7 +89,7 @@ The app runs in regulated environments, so every dependency has to be justified.
 
 - Use in-box .NET APIs first. Add a NuGet package only when it's clearly worth it, and prefer packages published by Microsoft.
 - Set package versions only in [Directory.Packages.props](Directory.Packages.props).
-- Commit the `packages.lock.json` files. CI restores in locked mode, so a stale lock file fails the build. Run `dotnet restore WSLProxy.slnx --force-evaluate` after you change a package.
+- Commit the `packages.lock.json` files. CI restores in locked mode, so a stale lock file fails the build. Run `dotnet restore Hairpin.slnx --force-evaluate` after you change a package.
 - New versions wait 7 days before they're used. [Dependabot](.github/dependabot.yml) proposes a version only once it's 7 days old (security updates aren't delayed), and [nuget.config](nuget.config) sets `minPublishAgeHours` to 168, so `dotnet package add` and `dotnet package update` skip versions younger than 7 days on NuGet 8.0 and later (.NET SDK 11 and later). Neither stops a restore of a version that's already pinned, so check a package's publish date on nuget.org before you pin it by hand.
 - [nuget.config](nuget.config) allows only nuget.org, and only packages that nuget.org has countersigned for a trusted owner. A new package from another owner fails restore with `NU3034` until its owner is added there, and that needs a reviewer's agreement.
 

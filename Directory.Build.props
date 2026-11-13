@@ -29,7 +29,7 @@
     <NuGetAuditLevel>low</NuGetAuditLevel>
 
     <!-- Product metadata. build.ps1 passes the version from GitVersion. -->
-    <Product>WSL Proxy Relay</Product>
+    <Product>Hairpin</Product>
     <Company>John Reardon</Company>
     <Copyright>Copyright (c) 2026 John Reardon. MIT License.</Copyright>
     <NeutralLanguage>en-GB</NeutralLanguage>

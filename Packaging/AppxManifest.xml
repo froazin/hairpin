@@ -19,13 +19,13 @@
   IgnorableNamespaces="uap uap5 uap10 rescap">
 
   <Identity
-    Name="WSLProxyRelay"
+    Name="Hairpin"
     Publisher="{{Publisher}}"
     Version="{{Version}}"
     ProcessorArchitecture="{{Architecture}}" />
 
   <Properties>
-    <DisplayName>WSL Proxy Relay</DisplayName>
+    <DisplayName>Hairpin</DisplayName>
     <PublisherDisplayName>{{PublisherDisplayName}}</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
@@ -48,12 +48,12 @@
     <!-- A full-trust desktop app at medium integrity, as the zip build runs. uap10 is allowed because MinVersion is
          10.0.19041 or later. -->
     <Application
-      Id="WSLProxyRelay"
-      Executable="WSLProxyRelay.exe"
+      Id="Hairpin"
+      Executable="Hairpin.exe"
       uap10:RuntimeBehavior="packagedClassicApp"
       uap10:TrustLevel="mediumIL">
       <uap:VisualElements
-        DisplayName="WSL Proxy Relay"
+        DisplayName="Hairpin"
         Description="Relays WSL traffic through a local HTTP proxy, so it leaves the machine from a Windows process."
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
@@ -63,7 +63,7 @@
              instead. It takes effect once the user has launched the app, and the user turns it off in Settings or
              Task Manager. -->
         <uap5:Extension Category="windows.startupTask">
-          <uap5:StartupTask TaskId="WSLProxyRelay" Enabled="true" DisplayName="WSL Proxy Relay" />
+          <uap5:StartupTask TaskId="Hairpin" Enabled="true" DisplayName="Hairpin" />
         </uap5:Extension>
       </Extensions>
     </Application>

@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds, tests, publishes and optionally signs WSL Proxy Relay.
+    Builds, tests, publishes and optionally signs Hairpin.
 
 .DESCRIPTION
     1. Restores the local .NET tools and works out the version with GitVersion.
@@ -14,7 +14,7 @@
     7. Writes GitVersion's variables to version.json, for CI.
 
     With -Msix, step 6 builds two signed MSIX bundles instead of the zips, one for each build: it packs each signed
-    folder with Packaging/AppxManifest.xml and logos drawn from Assets/wslproxy-logo.svg at every size Windows asks
+    folder with Packaging/AppxManifest.xml and logos drawn from Assets/hairpin-logo.svg at every size Windows asks
     for, indexed with makepri, bundles each build's packages into one .msixbundle, signs the bundles and writes
     SHA256SUMS.txt for them. MSIX mode needs the Windows SDK's makeappx.exe, makepri.exe and signtool.exe, and a code
     signing certificate whose subject becomes the package's publisher.
@@ -38,8 +38,8 @@
     An RFC 3161 timestamp server. Required when signing.
 
 .PARAMETER Msix
-    Builds signed MSIX bundles instead of the zips: WSLProxyRelay-<version>.msixbundle, which needs the .NET 10
-    Desktop Runtime, and WSLProxyRelay-<version>-self-contained.msixbundle. Needs -CertificateThumbprint and
+    Builds signed MSIX bundles instead of the zips: Hairpin-<version>.msixbundle, which needs the .NET 10
+    Desktop Runtime, and Hairpin-<version>-self-contained.msixbundle. Needs -CertificateThumbprint and
     -TimestampUrl, because Windows won't install an unsigned package.
 
 .PARAMETER PublisherDisplayName
@@ -82,10 +82,10 @@ $env:TESTINGPLATFORM_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_NOLOGO = '1'
 
 $root = $PSScriptRoot
-$solution = Join-Path $root 'WSLProxy.slnx'
-$appProject = Join-Path $root 'WSLProxy.App/WSLProxy.App.csproj'
+$solution = Join-Path $root 'Hairpin.slnx'
+$appProject = Join-Path $root 'Hairpin.App/Hairpin.App.csproj'
 $artifacts = Join-Path $root 'Artifacts'
-$product = 'WSLProxyRelay'
+$product = 'Hairpin'
 
 function Invoke-Native {
     param([string] $File, [string[]] $Arguments)
@@ -138,7 +138,7 @@ function Test-CodeSigningCertificate {
     return $false
 }
 
-# Reads Assets/wslproxy-logo.svg for New-LogoPng. It understands only what the logo uses: a viewBox, linear gradients
+# Reads Assets/hairpin-logo.svg for New-LogoPng. It understands only what the logo uses: a viewBox, linear gradients
 # in user space, and rect (with rx) and circle, each filled or stroked with a gradient or a #RRGGBB colour. It fails on
 # anything else, so a change to the logo can't be drawn wrongly without anyone noticing.
 function Read-LogoSvg {
@@ -366,7 +366,7 @@ New-Item $artifacts -ItemType Directory | Out-Null
 [IO.File]::WriteAllText((Join-Path $artifacts 'version.json'), ($gitVersionJson -join "`n"))
 
 Write-Host '==> Restoring packages (locked mode)'
-# WSLProxy.App lists every runtime in RuntimeIdentifiers, so one restore covers each publish below.
+# Hairpin.App lists every runtime in RuntimeIdentifiers, so one restore covers each publish below.
 Invoke-Native dotnet @('restore', $solution, '--locked-mode')
 
 Write-Host '==> Building'
@@ -398,7 +398,7 @@ if ($Msix) {
     # Windows picks the file that matches each place it shows the logo, by scale or by target size, so every one is
     # drawn at its own size from the SVG rather than stretched. The unplated target sizes are what Start, search and
     # the taskbar show. The manifest names each logo without a qualifier, and resources.pri maps the name to the files.
-    $logo = Read-LogoSvg (Join-Path $root 'Assets/wslproxy-logo.svg')
+    $logo = Read-LogoSvg (Join-Path $root 'Assets/hairpin-logo.svg')
     $scales = @{ 100 = 1.0; 125 = 1.25; 150 = 1.5; 200 = 2.0; 400 = 4.0 }
     # Each logo's size at 100% scale, and how much of the square's width the logo fills. The logo is twice as wide as
     # it's tall, so it fills the width of the small logos and leaves the medium tile its margin.
@@ -445,7 +445,7 @@ foreach ($build in $builds) {
             # Sign only our own binaries. The .NET runtime files in a self-contained build and the Microsoft.Extensions
             # package DLLs already carry Microsoft's signature.
             $ours = Get-ChildItem $publishDir -File |
-                Where-Object { $_.Name -eq "$product.exe" -or $_.Name -like 'WSLProxy.*.dll' -or $_.Name -eq "$product.dll" }
+                Where-Object { $_.Name -eq "$product.exe" -or $_.Name -like 'Hairpin.*.dll' -or $_.Name -eq "$product.dll" }
             Write-Host "==> Signing $($ours.Count) files for $rid, $($build.Name)"
             Invoke-Native $signTool (@('sign') + $signArguments + $ours.FullName)
             if ($verifySignatures) { Invoke-Native $signTool (@('verify', '/pa') + $ours.FullName) }

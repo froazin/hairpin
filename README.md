@@ -1,6 +1,6 @@
 <h1 style="font-weight: 600; padding-bottom: 12px; padding-left: 10px;">
-    <img src="./Assets/wslproxy-logo.svg" alt="WSLProxy Logo" height="42" style="vertical-align:bottom; margin-right:10px; filter:drop-shadow(2px 5px 3px rgba(15, 7, 36, 0.45));">
-    WSL Proxy Relay
+    <img src="./Assets/hairpin-logo.svg" alt="Hairpin logo" height="42" style="vertical-align:bottom; margin-right:10px; filter:drop-shadow(2px 5px 3px rgba(15, 7, 36, 0.45));">
+    Hairpin
     <sub style="font-weight: 400; font-size: 16px;">
         (and systray based GUI)
     </sub>
@@ -11,11 +11,13 @@
 <br>
 <br>
 
-WSL Proxy Relay is a per-user Windows tray app that runs a local HTTP proxy on `127.0.0.1` for WSL2 in mirrored networking mode. WSL traffic sent through it leaves the machine from a Windows process, so endpoint network agents such as Symantec WSS Agent handle it again.
+Hairpin is a per-user Windows tray app that runs a local HTTP proxy on `127.0.0.1` for WSL2 in mirrored networking mode. WSL traffic sent through it leaves the machine from a Windows process, so endpoint network agents such as Symantec WSS Agent handle it again.
+
+The name comes from hairpin routing: WSL's traffic loops back through Windows, like a hairpin turn, before it leaves the machine.
 
 ## Using it
 
-The [wiki](https://github.com/froazin/wsl-proxy-relay/wiki) is the user guide. Start with [Installing](https://github.com/froazin/wsl-proxy-relay/wiki/Installing) and [Setting up WSL](https://github.com/froazin/wsl-proxy-relay/wiki/Setting-up-WSL), and see [Troubleshooting](https://github.com/froazin/wsl-proxy-relay/wiki/Troubleshooting) if requests from WSL hang. Releases are [tags](https://github.com/froazin/wsl-proxy-relay/tags), with no packages, so build the app from source, as Installing describes. It's in early development, so expect changes between releases.
+The [wiki](https://github.com/froazin/hairpin/wiki) is the user guide. Start with [Installing](https://github.com/froazin/hairpin/wiki/Installing) and [Setting up WSL](https://github.com/froazin/hairpin/wiki/Setting-up-WSL), and see [Troubleshooting](https://github.com/froazin/hairpin/wiki/Troubleshooting) if requests from WSL hang. Releases are [tags](https://github.com/froazin/hairpin/tags), with no packages, so build the app from source, as Installing describes. It's in early development, so expect changes between releases.
 
 ## Why
 
@@ -23,15 +25,15 @@ In mirrored mode, endpoint network agents can't deliver replies to connections t
 
 ## For engineers
 
-WSLProxyRelay.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages, and `build.ps1` makes it in two builds: one that runs on the .NET 10 Desktop Runtime installed on the machine, which Microsoft Update keeps patched, and one that carries its own runtime ([Docs/releases.md](Docs/releases.md#the-net-runtime)).
+Hairpin.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages, and `build.ps1` makes it in two builds: one that runs on the .NET 10 Desktop Runtime installed on the machine, which Microsoft Update keeps patched, and one that carries its own runtime ([Docs/releases.md](Docs/releases.md#the-net-runtime)).
 
 ```mermaid
 flowchart LR
-    accTitle: WSL Proxy Relay architecture
-    accDescr: Tools in WSL send HTTP and HTTPS through the relay on 127.0.0.1. WSLProxyRelay.exe hosts the relay engine and the tray UI. The relay connects to destinations directly from Windows, where the endpoint agent handles the traffic, or through an optional upstream proxy.
+    accTitle: Hairpin architecture
+    accDescr: Tools in WSL send HTTP and HTTPS through the relay on 127.0.0.1. Hairpin.exe hosts the relay engine and the tray UI. The relay connects to destinations directly from Windows, where the endpoint agent handles the traffic, or through an optional upstream proxy.
     wsl[Tools in WSL2] -->|http_proxy=127.0.0.1:3128| relay
-    subgraph exe[WSLProxyRelay.exe]
-        ui[WSLProxy.UI: tray, flyout, settings] -->|status and settings| relay[WSLProxy.Relay: proxy engine]
+    subgraph exe[Hairpin.exe]
+        ui[Hairpin.UI: tray, flyout, settings] -->|status and settings| relay[Hairpin.Engine: proxy engine]
     end
     relay -->|direct, as a Windows process| agent[Endpoint agent]
     relay -->|optional| upstream[Upstream proxy]
@@ -40,8 +42,8 @@ flowchart LR
 ```
 
 - [Docs/problem.md](Docs/problem.md): the problem, its cause and the Windows configuration mirrored mode needs.
-- [Docs/relay.md](Docs/relay.md): the proxy engine in `WSLProxy.Relay/`.
-- [Docs/tray-ui.md](Docs/tray-ui.md): the executable and tray UI in `WSLProxy.App/` and `WSLProxy.UI/`.
+- [Docs/relay.md](Docs/relay.md): the proxy engine in `Hairpin.Engine/`.
+- [Docs/tray-ui.md](Docs/tray-ui.md): the executable and tray UI in `Hairpin.App/` and `Hairpin.UI/`.
 - [Docs/ci.md](Docs/ci.md) and [Docs/releases.md](Docs/releases.md): how CI builds and reviews each change, and how releases are made.
 - [CONTRIBUTING.md](CONTRIBUTING.md): building, testing, dependencies, versions and releases.
 - The project is licensed under the [MIT License](LICENSE).
