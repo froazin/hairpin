@@ -103,8 +103,8 @@ jobs:
           dotnet-version: 10.0.x
 
       # The same script as a local build: GitVersion, a locked restore, the build with warnings as errors, the tests, a
-      # self-contained publish for each runtime, the zips and SHA256SUMS.txt. Windows PowerShell 5.1, because the
-      # script must run there too.
+      # framework-dependent publish for each runtime, the zips and SHA256SUMS.txt. Windows PowerShell 5.1, because
+      # the script must run there too.
       - name: Build, test and publish
         shell: powershell
         run: ./build.ps1
@@ -340,7 +340,7 @@ jobs:
             3. Check each finding against the code before you post it. Drop any you can't back with evidence.
             4. Post each finding with `mcp__github_inline_comment__create_inline_comment`.
 
-            ${{ needs.build.result == 'success' && 'CI has already run `build.ps1` in Windows PowerShell 5.1 on Windows Server 2025, and it passed: a locked NuGet restore, the build with warnings as errors and the recommended .NET analysers, the MSTest tests, and a self-contained publish for win-x64 and win-arm64.' || 'The pull request changes only files the build doesn''t read, such as docs, so CI didn''t build or test it.' }} Nothing has run the tray app, opened its windows, or sent traffic through the relay from WSL or past an endpoint network agent. Check those by reading. Don't report on the pull request's title and description.
+            ${{ needs.build.result == 'success' && 'CI has already run `build.ps1` in Windows PowerShell 5.1 on Windows Server 2025, and it passed: a locked NuGet restore, the build with warnings as errors and the recommended .NET analysers, the MSTest tests, and a framework-dependent publish for win-x64 and win-arm64.' || 'The pull request changes only files the build doesn''t read, such as docs, so CI didn''t build or test it.' }} Nothing has run the tray app, opened its windows, or sent traffic through the relay from WSL or past an endpoint network agent. Check those by reading. Don't report on the pull request's title and description.
 
             ## What to report
 

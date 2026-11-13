@@ -23,7 +23,7 @@ Early development. Nothing has been released yet, and user docs will follow in t
 
 ## For engineers
 
-WSLProxyRelay.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages.
+WSLProxyRelay.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages, and it runs on the .NET 10 Desktop Runtime installed on the machine, which Microsoft Update keeps patched ([Docs/releases.md](Docs/releases.md#the-net-runtime)).
 
 ```mermaid
 flowchart LR

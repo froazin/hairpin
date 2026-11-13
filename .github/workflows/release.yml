@@ -88,6 +88,7 @@ jobs:
           subject-path: dist/*.zip
 
       # The packages aren't signed yet: the release says so, and SHA256SUMS.txt lets users check what they downloaded.
+      # They don't carry .NET either, so the notes say which runtime to install.
       - name: Create the release
         if: steps.newest.outputs.newest == 'true'
         env:
@@ -95,8 +96,11 @@ jobs:
           TAG: v${{ needs.ci.outputs.version }}
         run: |
           notes="$RUNNER_TEMP/notes.md"
-          printf '%s\n%s\n' \
+          printf '%s\n' \
             '> [!IMPORTANT]' \
-            '> These builds are not code-signed. Check each zip against `SHA256SUMS.txt` before you run it.' > "$notes"
+            '> These builds are not code-signed. Check each zip against `SHA256SUMS.txt` before you run it.' \
+            '>' \
+            '> They need the .NET 10 Desktop Runtime for the same architecture, which Microsoft Update keeps patched:' \
+            '> `winget install Microsoft.DotNet.DesktopRuntime.10`.' > "$notes"
           gh release create "$TAG" dist/*.zip dist/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "$TAG" --notes-file "$notes" --generate-notes

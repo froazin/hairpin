@@ -7,7 +7,7 @@
     1. Restores the local .NET tools and works out the version with GitVersion.
     2. Restores packages in locked mode, so the committed lock files must match.
     3. Builds and tests the solution.
-    4. Publishes a self-contained folder for each runtime.
+    4. Publishes a framework-dependent folder for each runtime. It needs the .NET 10 Desktop Runtime on the machine.
     5. Signs our own binaries with signtool, when a certificate thumbprint is given.
     6. Zips each folder and writes SHA256SUMS.txt next to the zips.
     7. Writes GitVersion's variables to version.json, for CI.
@@ -424,7 +424,7 @@ if ($Msix) {
 foreach ($rid in $Runtime) {
     $publishDir = Join-Path $artifacts "Publish/$rid"
     Write-Host "==> Publishing $rid"
-    Invoke-Native dotnet (@('publish', $appProject, '-c', $Configuration, '-r', $rid, '--self-contained', '--no-restore', '-o', $publishDir) + $versionProperties)
+    Invoke-Native dotnet (@('publish', $appProject, '-c', $Configuration, '-r', $rid, '--no-self-contained', '--no-restore', '-o', $publishDir) + $versionProperties)
 
     if ($signTool) {
         # Sign only our own binaries. The .NET runtime files already carry Microsoft's signature.

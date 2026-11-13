@@ -7,6 +7,7 @@ How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases
 1. [Overview](#overview)
 1. [How the version is decided](#how-the-version-is-decided)
 1. [Tags and releases](#tags-and-releases)
+1. [The .NET runtime](#the-net-runtime)
 1. [MSIX bundles built from source](#msix-bundles-built-from-source)
 1. [Security](#security)
 1. [Decisions](#decisions)
@@ -50,10 +51,18 @@ Runs share the `release` concurrency group: a run waits for the one in progress,
 ## Tags and releases
 
 - Each release is a GitHub release with a `vX.Y.Z` tag on the commit the run came from. Its assets are `WSLProxyRelay-X.Y.Z-win-x64.zip`, `WSLProxyRelay-X.Y.Z-win-arm64.zip` and `SHA256SUMS.txt`.
-- The notes start with a warning that the builds aren't code-signed, followed by notes GitHub generates from the merged PRs.
+- The notes start with a warning that the builds aren't code-signed and need the .NET 10 Desktop Runtime, with the `winget` command that installs it, followed by notes GitHub generates from the merged PRs.
 - Only the workflow creates release tags. Nobody tags a release by hand.
 - The `release` job only releases from the newest run, because a newer run releases the same changes. That also stops a re-run of an older run tagging an older commit.
 - When the repository is public, the job also attests the zips' build provenance with [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance), so users can check them with `gh attestation verify`. GitHub doesn't offer attestations for private repositories on this plan, so the step is skipped until then.
+
+## The .NET runtime
+
+The zips and the MSIX bundle are framework-dependent: they carry the app, not .NET. The app runs on the .NET 10 Desktop Runtime (`Microsoft.WindowsDesktop.App`) installed on the machine, for the same architecture as the build: x64 for `win-x64`, Arm64 for `win-arm64`. Install it with `winget install Microsoft.DotNet.DesktopRuntime.10`, or from the .NET download page. Without it the app doesn't start, and .NET says which runtime it needs.
+
+- **Patches:** the app uses the newest 10.0 patch installed, so a patched runtime applies from the app's next start, without a new release of the app.
+- **Microsoft Update, not Windows Update:** Microsoft ships .NET's security and other fixes through Microsoft Update. Client Windows gets them through Automatic Updates. IT teams can use WSUS or the Microsoft Update Catalog instead. Windows Server only gets them through Automatic Updates after a registry opt-in. A `BlockMU` registry value stops these updates. Windows Update itself only services .NET Framework.
+- **MSIX:** an MSIX package can't declare a dependency on the .NET runtime, so App Installer and Intune install the bundle whether the runtime is there or not. Deploy the runtime first, such as with its own Intune app.
 
 ## MSIX bundles built from source
 
@@ -92,6 +101,7 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 - **No release without a bump.** A run whose commits don't bump the version releases nothing, rather than a patch.
 - **Unsigned for now.** Releases are published with SHA-256 checksums but without Authenticode signatures, until the project has a code signing certificate. `build.ps1` can still sign a local build with `-CertificateThumbprint`.
 - **Zips in CI, MSIX from source.** An MSIX package has to be signed, and the project keeps no signing certificate in GitHub, so CI and releases stay with unsigned zips. `build.ps1 -Msix` lets an organisation build a bundle signed with its own certificate, with the publisher that certificate names.
+- **Framework-dependent, not self-contained.** A self-contained build carried its own copy of .NET, which only a new release of the app could patch. A framework-dependent build runs on the machine's runtime, which Microsoft Update patches as soon as Microsoft ships a fix, and IT can see and manage it like any other Microsoft product. The cost is a prerequisite: the runtime has to be installed first.
 - **One bundle, not one package per runtime.** A single `.msixbundle` holds the `x64` and `arm64` packages, and Windows installs the one that matches the machine.
 - **Full trust, not an AppContainer.** An `appContainer` app, such as one under Win32 app isolation, would reach less, but Windows blocks loopback connections to packaged apps by default. Letting an unpackaged client, such as WSL's traffic, connect would need `CheckNetIsolation.exe LoopbackExempt -is` running the whole time, with administrator rights, and Microsoft supports that only for sideloading and debugging. Accepting connections on `127.0.0.1` is the relay's whole job.
 
@@ -116,3 +126,5 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 - https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-manual-conversion
 - https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes
 - https://learn.microsoft.com/en-us/windows/apps/develop/communication/interprocess-communication
+- https://learn.microsoft.com/en-us/dotnet/core/install/windows
+- https://learn.microsoft.com/en-us/dotnet/core/versions/selection

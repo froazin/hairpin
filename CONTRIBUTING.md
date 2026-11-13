@@ -35,7 +35,7 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 
 `build.ps1` runs in Windows PowerShell 5.1 or PowerShell 7. It writes to `Artifacts/`:
 
-- `Publish/<runtime>/`: a self-contained folder for `win-x64` and `win-arm64`.
+- `Publish/<runtime>/`: a framework-dependent folder for `win-x64` and `win-arm64`, which runs on the .NET 10 Desktop Runtime installed on the machine.
 - `WSLProxyRelay-<version>-<runtime>.zip`: each folder, zipped.
 - `SHA256SUMS.txt`: a SHA-256 checksum for each zip, in `sha256sum` format.
 
