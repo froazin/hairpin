@@ -28,6 +28,7 @@ public sealed partial class TrayApplication : IDisposable
     private readonly StartupRegistration _startup;
     private readonly LogStore _logStore;
     private readonly IDebugLogging _debugLogging;
+    private readonly ConfigChecker _checker;
     private readonly string _logDirectory;
     private readonly ILogger<TrayApplication> _logger;
     private Application? _application;
@@ -35,11 +36,12 @@ public sealed partial class TrayApplication : IDisposable
     private FlyoutWindow? _flyout;
     private SettingsWindow? _settings;
     private LogWindow? _logs;
+    private IReadOnlyList<ConfigProblem> _problems = [];
 
     /// <summary>Creates the tray app.</summary>
     public TrayApplication(IRelayStatus status, IRelayControl control, IOptionsMonitor<RelayOptions> relayOptions,
         IOptionsMonitor<AppOptions> appOptions, UserSettingsStore store, StartupRegistration startup, LogStore logStore,
-        IDebugLogging debugLogging, string logDirectory,
+        IDebugLogging debugLogging, ConfigChecker checker, string logDirectory,
         ILogger<TrayApplication> logger)
     {
         _status = status;
@@ -50,6 +52,7 @@ public sealed partial class TrayApplication : IDisposable
         _startup = startup;
         _logStore = logStore;
         _debugLogging = debugLogging;
+        _checker = checker;
         _logDirectory = logDirectory;
         _logger = logger;
     }
@@ -92,14 +95,24 @@ public sealed partial class TrayApplication : IDisposable
         _flyout.QuitRequested += (_, _) => _application.Shutdown();
 
         _tray = new TrayIcon();
-        _tray.Activated += (_, anchor) => _flyout.Toggle(anchor);
-        _tray.DoubleClicked += (_, anchor) => _flyout.Open(anchor);
+        _tray.Activated += (_, anchor) =>
+        {
+            _checker.CheckSoon(TimeSpan.Zero);
+            _flyout.Toggle(anchor);
+        };
+        _tray.DoubleClicked += (_, anchor) =>
+        {
+            _checker.CheckSoon(TimeSpan.Zero);
+            _flyout.Open(anchor);
+        };
 
         // Remove the icon while its window still exists. After Run returns, WPF has destroyed it and NIM_DELETE would fail.
         _application.Exit += (_, _) => _tray.Dispose();
 
         _status.Changed += OnStatusChanged;
         Apply(_status.Current);
+        _checker.Changed += OnConfigChanged;
+        _checker.Start();
         try
         {
             return _application.Run();
@@ -107,6 +120,7 @@ public sealed partial class TrayApplication : IDisposable
         finally
         {
             _status.Changed -= OnStatusChanged;
+            _checker.Changed -= OnConfigChanged;
             _tray.Dispose();
             _flyout.Close();
         }
@@ -141,7 +155,38 @@ public sealed partial class TrayApplication : IDisposable
             RelayState.Stopped => "stopped",
             _ => "starting",
         };
-        _tray?.SetTooltip("WSL Proxy Relay: " + state);
+        var problems = _problems.Count switch
+        {
+            0 => string.Empty,
+            1 => " · 1 setting needs fixing",
+            _ => " · " + _problems.Count.ToString(CultureInfo.InvariantCulture) + " settings need fixing",
+        };
+        _tray?.SetTooltip("WSL Proxy Relay: " + state + problems);
+    }
+
+    // Raised on a thread-pool thread. Log here, then update the UI on its own thread.
+    private void OnConfigChanged(object? sender, EventArgs e)
+    {
+        var problems = _checker.Problems;
+        foreach (var problem in problems)
+        {
+            LogConfigProblem(_logger, problem.Title, problem.Fix);
+        }
+
+        if (problems.Count == 0)
+        {
+            LogConfigFine(_logger);
+        }
+
+        _application?.Dispatcher.BeginInvoke(DispatcherPriority.Background, () => ApplyProblems(_checker.Problems));
+    }
+
+    private void ApplyProblems(IReadOnlyList<ConfigProblem> problems)
+    {
+        _problems = problems;
+        _flyout?.SetProblems(problems);
+        _tray?.SetBadge(problems.Count > 0);
+        Apply(_status.Current);
     }
 
     private void CopyWslSetup()
@@ -218,6 +263,12 @@ public sealed partial class TrayApplication : IDisposable
 
     [LoggerMessage(EventId = 101, Level = LogLevel.Information, Message = "Debug logging turned {State} until the app restarts")]
     private static partial void LogDebugLogging(ILogger logger, string state);
+
+    [LoggerMessage(EventId = 102, Level = LogLevel.Warning, Message = "Settings check: {Title} Fix: {Fix}")]
+    private static partial void LogConfigProblem(ILogger logger, string title, string fix);
+
+    [LoggerMessage(EventId = 103, Level = LogLevel.Information, Message = "Settings check: IPv6 and the WSL networking mode allow mirrored mode")]
+    private static partial void LogConfigFine(ILogger logger);
 
     [LoggerMessage(EventId = 100, Level = LogLevel.Error, Message = "Unexpected UI error: {ExceptionType}")]
     private static partial void LogUiError(ILogger logger, string exceptionType);

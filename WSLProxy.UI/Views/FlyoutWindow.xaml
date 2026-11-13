@@ -72,6 +72,26 @@
             </StackPanel>
         </Border>
 
+        <!-- Settings that stop mirrored mode, each with a one-line fix. -->
+        <ItemsControl x:Name="ProblemsList" Margin="12,0,12,4" Visibility="Collapsed" Focusable="False">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="0,0,0,6" Padding="12,10" CornerRadius="8"
+                            Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="&#xEB90;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}" Margin="0,1,10,0" VerticalAlignment="Top" />
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                                <TextBlock Text="{Binding Fix}" TextWrapping="Wrap" Margin="0,2,0,0" Style="{DynamicResource CaptionTextBlockStyle}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <!-- Actions. -->
         <Button x:Name="PauseButton" Style="{StaticResource RowButton}" Click="OnPauseClick" AutomationProperties.Name="Pause or resume the relay">
             <StackPanel Orientation="Horizontal">

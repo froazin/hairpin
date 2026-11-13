@@ -7,6 +7,7 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 1. [Start-up](#start-up)
 1. [Tray icon](#tray-icon)
 1. [Flyout and settings window](#flyout-and-settings-window)
+1. [Settings checks](#settings-checks)
 1. [Settings files](#settings-files)
 1. [Start at sign-in](#start-at-sign-in)
 1. [Logging](#logging)
@@ -29,6 +30,7 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 - **Glyph:** `TrayGlyph.Choose` picks the black or white `.ico` from `SystemUsesLightTheme`, which describes the taskbar, not `AppsUseLightTheme`, which describes apps. Under high contrast it contrasts with the high-contrast window colour instead.
 - **Size:** the small-icon size at the taskbar's own DPI (`GetSystemMetricsForDpi` with the DPI of `Shell_TrayWnd`), loaded with `CreateIconFromResourceEx` from the exact image in the `.ico`, or the next larger one.
 - **Updates:** `WM_SETTINGCHANGE` (including the `ImmersiveColorSet` theme broadcast), `WM_SYSCOLORCHANGE`, `WM_DISPLAYCHANGE` and `WM_DPICHANGED` recheck the glyph and size. `TaskbarCreated`, sent when Explorer restarts or the primary display's DPI changes, adds the icon again.
+- **Badge:** when a [settings check](#settings-checks) finds a problem, `TrayBadge` draws a small red X in the glyph's lower-right corner, with a transparent gap around it, and `IconFile.FromBgra` turns the pixels into the 32-bit icon image `CreateIconFromResourceEx` reads.
 - **Identity:** window handle and ID 1, not a GUID, because Windows ties a GUID to the exe's path.
 
 ## Flyout and settings window
@@ -60,6 +62,19 @@ sequenceDiagram
     R-->>F: Status changed
     F->>U: New state shown
 ```
+
+## Settings checks
+
+`ConfigChecker` checks the two settings that most often stop WSL using mirrored mode, which [problem.md](problem.md#mirrored-mode-must-really-be-on) explains. Each problem shows in the flyout as a card with a one-line fix, adds the red X to the tray icon and a note to its tooltip, and is logged as a warning.
+
+| Check | A problem when | Fix shown |
+| --- | --- | --- |
+| IPv6 | `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters\DisabledComponents` is exactly `0xFF`, the only value WSL refuses mirrored mode for | Set it to `0x20` and restart Windows |
+| Networking mode | The mode WSL will use isn't mirrored | Set `networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig`, or ask IT when policy decides |
+
+`ConfigChecks` works out the mode as WSL does (`WslCoreConfig.cpp`): `networkingMode` under `[wsl2]` or `[experimental]`, in any case, with `#` comments and the last value winning. Without it, the mode is the `DefaultNetworkingMode` policy under `HKLM\SOFTWARE\Policies\WSL`, or NAT. When `AllowNetworkingModeUserSetting` is `0`, the policy's default replaces the file's value, unless that value is `none`.
+
+It checks at start-up, half a second after `.wslconfig` changes, and each time the flyout opens. It reads on a thread-pool thread, and anything it can't read counts as not set. It only reads what's configured: `wslinfo --networking-mode` inside WSL says what's in force, which can differ until WSL restarts.
 
 ## Settings files
 

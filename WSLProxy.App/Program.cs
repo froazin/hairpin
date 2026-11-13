@@ -120,6 +120,8 @@ public static partial class Program
         builder.Services.AddRelay(builder.Configuration);
         builder.Services.AddSafeOptions<AppOptions>(builder.Configuration, AppOptions.SectionName);
         builder.Services.AddSingleton(new UserSettingsStore(settingsFile));
+        builder.Services.AddSingleton(_ => new ConfigChecker(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wslconfig")));
         builder.Services.AddSingleton(new StartupRegistration(
             Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "WSLProxyRelay.exe"),
             enabled: IsReleaseBuild));
@@ -132,6 +134,7 @@ public static partial class Program
             sp.GetRequiredService<StartupRegistration>(),
             logStore,
             debugLogging,
+            sp.GetRequiredService<ConfigChecker>(),
             logDirectory,
             sp.GetRequiredService<ILogger<TrayApplication>>()));
 
