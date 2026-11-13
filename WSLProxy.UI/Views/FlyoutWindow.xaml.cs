@@ -140,14 +140,7 @@ public partial class FlyoutWindow : Window
         StateBadge.SetResourceReference(BackgroundProperty, brushKey.Replace("Brush", "BackgroundBrush", StringComparison.Ordinal));
 
         EndpointText.Text = snapshot.ListenEndpoint;
-        UpstreamText.Text = snapshot.Upstream is null
-            ? "None: connecting directly"
-            : snapshot.Upstream + " · " + snapshot.UpstreamHealth switch
-            {
-                UpstreamHealth.Reachable => "reachable",
-                UpstreamHealth.Unreachable => "unreachable",
-                _ => "checking",
-            };
+        UpstreamText.Text = DescribeUpstreams(snapshot.HttpUpstream, snapshot.HttpsUpstream);
 
         ErrorPanel.Visibility = string.IsNullOrEmpty(snapshot.LastError) ? Visibility.Collapsed : Visibility.Visible;
         ErrorText.Text = snapshot.LastError ?? string.Empty;
@@ -155,6 +148,28 @@ public partial class FlyoutWindow : Window
         var paused = snapshot.State == RelayState.Paused;
         PauseText.Text = paused ? "Resume" : "Pause";
         PauseGlyph.Text = ((char)(paused ? 0xE768 : 0xE769)).ToString(); // Segoe Fluent Icons: Play, Pause.
+    }
+
+    /// <summary>One line when HTTP and HTTPS share a proxy, as they usually do, or a line for each when they don't.</summary>
+    private static string DescribeUpstreams(UpstreamStatus? http, UpstreamStatus? https)
+    {
+        if (http is null && https is null)
+        {
+            return "None: connecting directly";
+        }
+
+        return http == https
+            ? Describe(http)
+            : "HTTP " + Describe(http) + Environment.NewLine + "HTTPS " + Describe(https);
+
+        static string Describe(UpstreamStatus? upstream) => upstream is null
+            ? "direct"
+            : upstream.Endpoint + " · " + upstream.Health switch
+            {
+                UpstreamHealth.Reachable => "reachable",
+                UpstreamHealth.Unreachable => "unreachable",
+                _ => "checking",
+            };
     }
 
     /// <summary>Shows the traffic rates, chart and totals.</summary>

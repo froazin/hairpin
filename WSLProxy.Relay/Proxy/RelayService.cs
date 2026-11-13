@@ -47,7 +47,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
     private RelayState _state = RelayState.Starting;
     private string? _lastError;
     private string? _optionsError;
-    private UpstreamHealth _health;
+    private Dictionary<UpstreamEndpoint, UpstreamHealth> _health = [];
 
     /// <summary>Creates the relay. Use <see cref="ServiceCollectionExtensions.AddRelay"/> rather than calling this directly.</summary>
     public RelayService(IOptionsMonitor<RelayOptions> options, ILogger<RelayService> logger)
@@ -57,7 +57,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
         _logger = logger;
         var initial = options.CurrentValue;
         _runtime = BuildRuntime(initial, initial.ListenPort);
-        _health = initial.Upstream.IsConfigured ? UpstreamHealth.Unknown : UpstreamHealth.NotConfigured;
+        _health = HealthFor(_runtime, []);
     }
 
     /// <inheritdoc />
@@ -75,8 +75,8 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
                 return new RelaySnapshot(
                     _state,
                     "127.0.0.1:" + port.ToString(CultureInfo.InvariantCulture),
-                    options.Upstream.IsConfigured ? Connector.Describe(options.Upstream) : null,
-                    _health,
+                    StatusOf(_runtime.HttpUpstream),
+                    StatusOf(_runtime.HttpsUpstream),
                     Volatile.Read(ref _active),
                     Interlocked.Read(ref _total),
                     _optionsError ?? _lastError);
@@ -94,7 +94,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
         Publish(immediate: false);
     }
 
-    void ISessionHost.OnUpstreamResult(bool reachable) => SetUpstreamHealth(reachable ? UpstreamHealth.Reachable : UpstreamHealth.Unreachable);
+    void ISessionHost.OnUpstreamResult(UpstreamEndpoint upstream, bool reachable) => SetUpstreamHealth(upstream, reachable ? UpstreamHealth.Reachable : UpstreamHealth.Unreachable);
 
     TrafficCounters ISessionHost.Traffic => _traffic;
 
@@ -367,25 +367,29 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
         while (!cancellationToken.IsCancellationRequested)
         {
             var runtime = Volatile.Read(ref _runtime);
-            var upstream = runtime.Options.Upstream;
-            if (!upstream.IsConfigured || upstream.HealthCheckIntervalSeconds <= 0)
+            var interval = runtime.Options.Upstream.HealthCheckIntervalSeconds;
+            var upstreams = UpstreamsOf(runtime);
+            if (upstreams.Count == 0 || interval <= 0)
             {
                 await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            try
+            foreach (var upstream in upstreams)
             {
-                using var probe = await Connector.ConnectUpstreamAsync(upstream, runtime.Router.ListenPort, runtime.ConnectTimeout, cancellationToken)
-                    .ConfigureAwait(false);
-                SetUpstreamHealth(UpstreamHealth.Reachable);
-            }
-            catch (RelayException)
-            {
-                SetUpstreamHealth(UpstreamHealth.Unreachable);
+                try
+                {
+                    using var probe = await Connector.ConnectUpstreamAsync(upstream, runtime.Router.ListenPort, runtime.ConnectTimeout, cancellationToken)
+                        .ConfigureAwait(false);
+                    SetUpstreamHealth(upstream, UpstreamHealth.Reachable);
+                }
+                catch (RelayException)
+                {
+                    SetUpstreamHealth(upstream, UpstreamHealth.Unreachable);
+                }
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(upstream.HealthCheckIntervalSeconds), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(interval), cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -447,10 +451,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
 
             var routerPort = options.ListenPort != 0 ? options.ListenPort : _boundPort;
             _runtime = BuildRuntime(options, routerPort);
-            if (previous.Upstream.Host != options.Upstream.Host || previous.Upstream.Port != options.Upstream.Port)
-            {
-                _health = options.Upstream.IsConfigured ? UpstreamHealth.Unknown : UpstreamHealth.NotConfigured;
-            }
+            _health = HealthFor(_runtime, _health);
         }
 
         if (wake)
@@ -464,8 +465,21 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
     private static RelayRuntime BuildRuntime(RelayOptions options, int listenPort)
     {
         var list = NoProxyList.Parse(options.NoProxy, out _);
-        return new RelayRuntime(options, new Router(list, options.Upstream.IsConfigured, listenPort, options.DenyLocalDestinations));
+        return new RelayRuntime(options, new Router(list, options.Upstream.ForHttp is not null, options.Upstream.ForHttps is not null,
+            listenPort, options.DenyLocalDestinations));
     }
+
+    /// <summary>The distinct upstream proxies a runtime uses: none, one, or two when HTTPS has its own.</summary>
+    private static List<UpstreamEndpoint> UpstreamsOf(RelayRuntime runtime) =>
+        [.. new[] { runtime.HttpUpstream, runtime.HttpsUpstream }.OfType<UpstreamEndpoint>().Distinct()];
+
+    /// <summary>The health of each upstream a runtime uses, kept from <paramref name="previous"/> for any that didn't change.</summary>
+    private static Dictionary<UpstreamEndpoint, UpstreamHealth> HealthFor(RelayRuntime runtime, Dictionary<UpstreamEndpoint, UpstreamHealth> previous) =>
+        UpstreamsOf(runtime).ToDictionary(u => u, u => previous.GetValueOrDefault(u, UpstreamHealth.Unknown));
+
+    /// <summary>The status of one upstream, for the snapshot. Call under <see cref="_gate"/>.</summary>
+    private UpstreamStatus? StatusOf(UpstreamEndpoint? upstream) =>
+        upstream is null ? null : new UpstreamStatus(upstream.ToString(), _health.GetValueOrDefault(upstream, UpstreamHealth.Unknown));
 
     private static Socket Bind(int port)
     {
@@ -514,18 +528,17 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
         Publish(immediate: true);
     }
 
-    private void SetUpstreamHealth(UpstreamHealth health)
+    private void SetUpstreamHealth(UpstreamEndpoint upstream, UpstreamHealth health)
     {
-        string? upstream;
         lock (_gate)
         {
-            if (!_runtime.Options.Upstream.IsConfigured || _health == health)
+            // A session or probe can finish after the settings changed: ignore results for upstreams no longer in use.
+            if (!_health.TryGetValue(upstream, out var current) || current == health)
             {
                 return;
             }
 
-            _health = health;
-            upstream = Connector.Describe(_runtime.Options.Upstream);
+            _health[upstream] = health;
         }
 
         Log.UpstreamHealth(_logger, upstream, health);

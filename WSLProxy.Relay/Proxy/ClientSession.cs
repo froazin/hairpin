@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
+using WSLProxy.Relay.Configuration;
 using WSLProxy.Relay.Http;
 using WSLProxy.Relay.Routing;
 
@@ -104,7 +105,7 @@ internal sealed class ClientSession : IAsyncDisposable
                 return;
             }
 
-            var decision = runtime.Router.Decide(host, request.Port);
+            var decision = runtime.Router.Decide(host, request.Port, tunnel: request.Form == TargetForm.Authority);
             if (decision.Kind == RouteKind.Deny)
             {
                 await RefuseAsync(403, decision.Reason, null, cancellationToken).ConfigureAwait(false);
@@ -142,7 +143,7 @@ internal sealed class ClientSession : IAsyncDisposable
         try
         {
             socket = decision.Kind == RouteKind.Upstream
-                ? await ConnectUpstreamAsync(runtime, cancellationToken).ConfigureAwait(false)
+                ? await ConnectUpstreamAsync(runtime, runtime.HttpsUpstream!, cancellationToken).ConfigureAwait(false)
                 : await Connector.ConnectDirectAsync(host, request.Port, runtime.Router, runtime.ConnectTimeout, cancellationToken).ConfigureAwait(false);
         }
         catch (RelayException ex)
@@ -479,25 +480,25 @@ internal sealed class ClientSession : IAsyncDisposable
 
         await DropServerAsync().ConfigureAwait(false);
         var socket = toUpstream
-            ? await ConnectUpstreamAsync(runtime, cancellationToken).ConfigureAwait(false)
+            ? await ConnectUpstreamAsync(runtime, runtime.HttpUpstream!, cancellationToken).ConfigureAwait(false)
             : await Connector.ConnectDirectAsync(host, port, runtime.Router, runtime.ConnectTimeout, cancellationToken).ConfigureAwait(false);
         _server = new ServerConnection(socket, runtime, key);
         Log.ServerOpened(Logger, host.Value, port, toUpstream ? RouteKind.Upstream : RouteKind.Direct);
         return false;
     }
 
-    private async Task<Socket> ConnectUpstreamAsync(RelayRuntime runtime, CancellationToken cancellationToken)
+    private async Task<Socket> ConnectUpstreamAsync(RelayRuntime runtime, UpstreamEndpoint upstream, CancellationToken cancellationToken)
     {
         try
         {
-            var socket = await Connector.ConnectUpstreamAsync(runtime.Options.Upstream, runtime.Router.ListenPort, runtime.ConnectTimeout, cancellationToken)
+            var socket = await Connector.ConnectUpstreamAsync(upstream, runtime.Router.ListenPort, runtime.ConnectTimeout, cancellationToken)
                 .ConfigureAwait(false);
-            _host.OnUpstreamResult(true);
+            _host.OnUpstreamResult(upstream, true);
             return socket;
         }
         catch (RelayException)
         {
-            _host.OnUpstreamResult(false);
+            _host.OnUpstreamResult(upstream, false);
             throw;
         }
     }

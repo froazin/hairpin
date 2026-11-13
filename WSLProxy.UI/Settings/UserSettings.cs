@@ -25,15 +25,19 @@ public sealed class AppOptions
 
 /// <summary>The settings a user can change in the settings window.</summary>
 /// <param name="ListenPort">The relay's port on 127.0.0.1.</param>
-/// <param name="UpstreamHost">The upstream proxy's host, or empty for none.</param>
-/// <param name="UpstreamPort">The upstream proxy's port.</param>
+/// <param name="HttpProxyHost">The upstream proxy for http:// URLs, or empty to send them direct.</param>
+/// <param name="HttpProxyPort">The HTTP proxy's port.</param>
+/// <param name="HttpsProxyHost">The upstream proxy for https:// URLs, or empty to use the HTTP proxy's host.</param>
+/// <param name="HttpsProxyPort">The HTTPS proxy's port, or null to use the HTTP proxy's port.</param>
 /// <param name="NoProxy">The bypass list entries, in order.</param>
 /// <param name="DenyLocalDestinations">Whether local and reserved destinations are refused.</param>
 /// <param name="StartAtLogin">Whether the app starts when the user signs in.</param>
 public sealed record UserSettings(
     int ListenPort,
-    string UpstreamHost,
-    int UpstreamPort,
+    string HttpProxyHost,
+    int HttpProxyPort,
+    string HttpsProxyHost,
+    int? HttpsProxyPort,
     IReadOnlyList<string> NoProxy,
     bool DenyLocalDestinations,
     bool StartAtLogin)
@@ -43,7 +47,9 @@ public sealed record UserSettings(
     {
         ArgumentNullException.ThrowIfNull(relay);
         ArgumentNullException.ThrowIfNull(app);
-        return new UserSettings(relay.ListenPort, relay.Upstream.Host, relay.Upstream.Port, [.. relay.NoProxy], relay.DenyLocalDestinations, app.StartAtLogin);
+        var upstream = relay.Upstream;
+        return new UserSettings(relay.ListenPort, upstream.Http.Host, upstream.Http.Port ?? 80, upstream.Https.Host, upstream.Https.Port,
+            [.. relay.NoProxy], relay.DenyLocalDestinations, app.StartAtLogin);
     }
 
     /// <summary>Builds the relay options these settings would produce, keeping every other value from <paramref name="current"/>.</summary>
@@ -55,8 +61,8 @@ public sealed record UserSettings(
             ListenPort = ListenPort,
             Upstream = new UpstreamOptions
             {
-                Host = UpstreamHost.Trim(),
-                Port = UpstreamPort,
+                Http = new UpstreamProxyOptions { Host = HttpProxyHost.Trim(), Port = HttpProxyPort },
+                Https = new UpstreamProxyOptions { Host = HttpsProxyHost.Trim(), Port = HttpsProxyPort },
                 HealthCheckIntervalSeconds = current.Upstream.HealthCheckIntervalSeconds,
             },
             DenyLocalDestinations = DenyLocalDestinations,
@@ -139,8 +145,16 @@ public sealed class UserSettingsStore
         var relay = Section(root, RelayOptions.SectionName);
         relay[nameof(RelayOptions.ListenPort)] = settings.ListenPort;
         var upstream = Section(relay, nameof(RelayOptions.Upstream));
-        upstream[nameof(UpstreamOptions.Host)] = settings.UpstreamHost.Trim();
-        upstream[nameof(UpstreamOptions.Port)] = settings.UpstreamPort;
+
+        // Versions up to 0.4 had one upstream proxy, set directly under Upstream. Http and Https replace it.
+        upstream.Remove(nameof(UpstreamProxyOptions.Host));
+        upstream.Remove(nameof(UpstreamProxyOptions.Port));
+        var http = Section(upstream, nameof(UpstreamOptions.Http));
+        http[nameof(UpstreamProxyOptions.Host)] = settings.HttpProxyHost.Trim();
+        http[nameof(UpstreamProxyOptions.Port)] = settings.HttpProxyPort;
+        var https = Section(upstream, nameof(UpstreamOptions.Https));
+        https[nameof(UpstreamProxyOptions.Host)] = settings.HttpsProxyHost.Trim();
+        https[nameof(UpstreamProxyOptions.Port)] = settings.HttpsProxyPort;
         relay[nameof(RelayOptions.NoProxy)] = new JsonArray([.. settings.NoProxy.Select(e => (JsonNode?)JsonValue.Create(e.Trim()))]);
         relay[nameof(RelayOptions.DenyLocalDestinations)] = settings.DenyLocalDestinations;
         Section(root, AppOptions.SectionName)[nameof(AppOptions.StartAtLogin)] = settings.StartAtLogin;

@@ -11,7 +11,7 @@ using WSLProxy.Relay.Status;
 
 namespace WSLProxy.Relay.Tests;
 
-/// <summary>End-to-end checks over real loopback sockets: keep-alive reuse, CONNECT tunnelling and the local deny list.</summary>
+/// <summary>End-to-end checks over real loopback sockets: keep-alive reuse, CONNECT tunnelling, the HTTP and HTTPS upstreams and the local deny list.</summary>
 [TestClass]
 public sealed class RelayIntegrationTests
 {
@@ -180,6 +180,38 @@ public sealed class RelayIntegrationTests
     }
 
     [TestMethod]
+    public async Task Plain_requests_go_to_the_http_proxy_and_tunnels_to_the_https_proxy()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        using var httpProxy = new TcpListener(IPAddress.Loopback, 0);
+        using var httpsProxy = new TcpListener(IPAddress.Loopback, 0);
+        httpProxy.Start();
+        httpsProxy.Start();
+        var httpHead = AnswerOnceAsync(httpProxy, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", cts.Token);
+        var httpsHead = AnswerOnceAsync(httpsProxy, "HTTP/1.1 200 Connection established\r\n\r\n", cts.Token);
+
+        // The HTTPS proxy sets only its port, so it takes the HTTP proxy's host. No health probes: each fake proxy takes one connection.
+        await using var relay = await StartRelayAsync(denyLocal: true, cts.Token, options =>
+        {
+            options.Upstream.HealthCheckIntervalSeconds = 0;
+            options.Upstream.Http = new UpstreamProxyOptions { Host = "127.0.0.1", Port = ((IPEndPoint)httpProxy.LocalEndpoint).Port };
+            options.Upstream.Https = new UpstreamProxyOptions { Port = ((IPEndPoint)httpsProxy.LocalEndpoint).Port };
+        });
+
+        foreach (var request in new[] { "GET http://example.test/a HTTP/1.1\r\nHost: example.test\r\n\r\n", "CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n" })
+        {
+            using var client = await ConnectAsync(relay.Port, cts.Token);
+            await using var stream = new NetworkStream(client);
+            using var reader = new HttpReader(stream, 16 * 1024);
+            await stream.WriteAsync(Encoding.ASCII.GetBytes(request), cts.Token);
+            StringAssert.StartsWith(Encoding.Latin1.GetString((await reader.ReadHeadAsync(8192, cts.Token)).Head.Span), "HTTP/1.1 200 ");
+        }
+
+        StringAssert.StartsWith(await httpHead, "GET http://example.test/a HTTP/1.1\r\n");
+        StringAssert.StartsWith(await httpsHead, "CONNECT example.test:443 HTTP/1.1\r\n");
+    }
+
+    [TestMethod]
     public async Task Local_destinations_are_refused_by_default_and_counted_as_errors()
     {
         using var cts = new CancellationTokenSource(Timeout);
@@ -201,9 +233,21 @@ public sealed class RelayIntegrationTests
         return socket;
     }
 
-    private static async Task<RunningRelay> StartRelayAsync(bool denyLocal, CancellationToken cancellationToken)
+    /// <summary>Plays a proxy that accepts one connection, answers its first request head and returns that head.</summary>
+    private static async Task<string> AnswerOnceAsync(TcpListener listener, string answer, CancellationToken cancellationToken)
+    {
+        using var socket = await listener.AcceptSocketAsync(cancellationToken);
+        await using var stream = new NetworkStream(socket);
+        using var reader = new HttpReader(stream, 16 * 1024);
+        var head = Encoding.Latin1.GetString((await reader.ReadHeadAsync(8192, cancellationToken)).Head.Span);
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(answer), cancellationToken);
+        return head;
+    }
+
+    private static async Task<RunningRelay> StartRelayAsync(bool denyLocal, CancellationToken cancellationToken, Action<RelayOptions>? configure = null)
     {
         var options = new RelayOptions { ListenPort = 0, DenyLocalDestinations = denyLocal };
+        configure?.Invoke(options);
         var service = new RelayService(new FixedOptionsMonitor(options), NullLogger<RelayService>.Instance);
         await service.StartAsync(cancellationToken);
         while (service.Current.State != RelayState.Running)

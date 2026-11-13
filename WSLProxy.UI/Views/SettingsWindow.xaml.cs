@@ -6,7 +6,7 @@ using WSLProxy.UI.Settings;
 
 namespace WSLProxy.UI.Views;
 
-/// <summary>The settings window: upstream proxy, bypass list, relay port and start at sign-in.</summary>
+/// <summary>The settings window: upstream proxies, bypass list, relay port and start at sign-in.</summary>
 public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<string> _entries;
@@ -20,8 +20,10 @@ public partial class SettingsWindow : Window
         _save = save;
         _entries = [.. current.NoProxy];
         EntriesList.ItemsSource = _entries;
-        UpstreamHostBox.Text = current.UpstreamHost;
-        UpstreamPortBox.Text = current.UpstreamPort.ToString(CultureInfo.InvariantCulture);
+        HttpHostBox.Text = current.HttpProxyHost;
+        HttpPortBox.Text = current.HttpProxyPort.ToString(CultureInfo.InvariantCulture);
+        HttpsHostBox.Text = current.HttpsProxyHost;
+        HttpsPortBox.Text = current.HttpsProxyPort?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         ListenPortBox.Text = current.ListenPort.ToString(CultureInfo.InvariantCulture);
         DenyLocalBox.IsChecked = current.DenyLocalDestinations;
         StartAtLoginBox.IsChecked = current.StartAtLogin;
@@ -80,7 +82,10 @@ public partial class SettingsWindow : Window
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
     {
-        if (!TryParsePort(UpstreamPortBox.Text, out var upstreamPort) || !TryParsePort(ListenPortBox.Text, out var listenPort))
+        // The HTTPS port may be left empty, to use the HTTP one.
+        var httpsPortEmpty = string.IsNullOrWhiteSpace(HttpsPortBox.Text);
+        if (!TryParsePort(HttpPortBox.Text, out var httpPort) || !TryParsePort(ListenPortBox.Text, out var listenPort)
+            || (!TryParsePort(HttpsPortBox.Text, out var httpsPort) && !httpsPortEmpty))
         {
             ProblemText.Text = "Ports must be numbers from 1 to 65535.";
             return;
@@ -88,8 +93,10 @@ public partial class SettingsWindow : Window
 
         var settings = new UserSettings(
             listenPort,
-            UpstreamHostBox.Text.Trim(),
-            upstreamPort,
+            HttpHostBox.Text.Trim(),
+            httpPort,
+            HttpsHostBox.Text.Trim(),
+            httpsPortEmpty ? null : httpsPort,
             [.. _entries],
             DenyLocalBox.IsChecked == true,
             StartAtLoginBox.IsChecked == true);

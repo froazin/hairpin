@@ -19,12 +19,9 @@ public enum RelayState
     Stopped,
 }
 
-/// <summary>Whether the upstream proxy is reachable.</summary>
+/// <summary>Whether an upstream proxy is reachable.</summary>
 public enum UpstreamHealth
 {
-    /// <summary>No upstream proxy is configured, so every request goes direct.</summary>
-    NotConfigured,
-
     /// <summary>The upstream proxy hasn't been checked yet.</summary>
     Unknown,
 
@@ -38,16 +35,16 @@ public enum UpstreamHealth
 /// <summary>An immutable snapshot of the relay's state, for display.</summary>
 /// <param name="State">The lifecycle state.</param>
 /// <param name="ListenEndpoint">The endpoint the relay listens on, such as <c>127.0.0.1:3128</c>.</param>
-/// <param name="Upstream">The upstream proxy as <c>host:port</c>, or null when every request goes direct.</param>
-/// <param name="UpstreamHealth">Whether the upstream proxy is reachable.</param>
+/// <param name="HttpUpstream">The upstream proxy for plain HTTP requests, or null when they go direct.</param>
+/// <param name="HttpsUpstream">The upstream proxy for CONNECT tunnels, or null when they go direct. Often the same as <paramref name="HttpUpstream"/>.</param>
 /// <param name="ActiveConnections">Client connections open now.</param>
 /// <param name="TotalRequests">Requests handled since the relay started, CONNECT tunnels included.</param>
 /// <param name="LastError">The most recent error worth showing the user, or null.</param>
 public sealed record RelaySnapshot(
     RelayState State,
     string ListenEndpoint,
-    string? Upstream,
-    UpstreamHealth UpstreamHealth,
+    UpstreamStatus? HttpUpstream,
+    UpstreamStatus? HttpsUpstream,
     int ActiveConnections,
     long TotalRequests,
     string? LastError);
@@ -98,3 +95,8 @@ public interface IRelayMetrics
     /// <summary>The totals now.</summary>
     RelayCounters Read();
 }
+
+/// <summary>An upstream proxy in use, and whether it's reachable.</summary>
+/// <param name="Endpoint">The proxy as <c>host:port</c>.</param>
+/// <param name="Health">Whether the last connection to it worked.</param>
+public sealed record UpstreamStatus(string Endpoint, UpstreamHealth Health);

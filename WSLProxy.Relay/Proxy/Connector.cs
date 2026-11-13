@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using WSLProxy.Relay.Configuration;
@@ -48,12 +47,12 @@ internal static class Connector
     /// Connects to the configured upstream proxy. The user chose it, so the local deny list doesn't apply, but an address that
     /// would loop back to the relay's own port is still refused.
     /// </summary>
-    public static async Task<Socket> ConnectUpstreamAsync(UpstreamOptions upstream, int listenPort, TimeSpan timeout, CancellationToken cancellationToken)
+    public static async Task<Socket> ConnectUpstreamAsync(UpstreamEndpoint upstream, int listenPort, TimeSpan timeout, CancellationToken cancellationToken)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeout);
-        var name = Describe(upstream);
-        var hostName = upstream.Host.Trim();
+        var name = upstream.ToString();
+        var hostName = upstream.Host;
         IPAddress[] addresses = HostNormaliser.TryParseStrictIPv4(hostName, out var literal)
             ? [literal]
             : await ResolveAsync(hostName, timeoutCts.Token, cancellationToken).ConfigureAwait(false);
@@ -73,10 +72,6 @@ internal static class Connector
             $"The upstream proxy {name} didn't answer. Check the endpoint agent is connected.",
             timeoutCts.Token, cancellationToken).ConfigureAwait(false);
     }
-
-    /// <summary>Formats the upstream proxy as <c>host:port</c> for messages and the UI.</summary>
-    public static string Describe(UpstreamOptions upstream) =>
-        upstream.Host.Trim() + ":" + upstream.Port.ToString(CultureInfo.InvariantCulture);
 
     private static async Task<IPAddress[]> ResolveAsync(string host, CancellationToken token, CancellationToken outer)
     {

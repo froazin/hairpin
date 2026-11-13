@@ -22,9 +22,13 @@ public sealed class SettingsTests
     {
         var path = Path.Combine(_directory, "settings.json");
 
-        // A hand-added limit and an unknown section, with keys cased differently from the options classes.
-        File.WriteAllText(path, """{ "relay": { "limits": { "MaxConnections": 64 } }, "Other": { "Keep": true } }""");
-        var settings = new UserSettings(3129, " proxy.example.com ", 8080, ["corp.example", "10.0.0.0/8"], DenyLocalDestinations: false, StartAtLogin: false);
+        // A hand-added limit and an unknown section, with keys cased differently from the options classes, and the single
+        // upstream proxy that earlier versions wrote.
+        File.WriteAllText(path, """
+            { "relay": { "limits": { "MaxConnections": 64 }, "upstream": { "host": "old.example", "port": 3129 } }, "Other": { "Keep": true } }
+            """);
+        var settings = new UserSettings(3129, " proxy.example.com ", 8080, "", null, ["corp.example", "10.0.0.0/8"],
+            DenyLocalDestinations: false, StartAtLogin: false);
 
         var problems = new UserSettingsStore(path).Save(settings, new RelayOptions());
 
@@ -33,8 +37,8 @@ public sealed class SettingsTests
         Assert.HasCount(3, root, "The existing relay section is updated, not duplicated under another casing.");
         var relay = root["relay"]!;
         Assert.AreEqual(3129, (int)relay["ListenPort"]!);
-        Assert.AreEqual("proxy.example.com", (string)relay["Upstream"]!["Host"]!);
-        Assert.AreEqual(8080, (int)relay["Upstream"]!["Port"]!);
+        Assert.AreEqual("""{"Http":{"Host":"proxy.example.com","Port":8080},"Https":{"Host":"","Port":null}}""",
+            relay["upstream"]!.ToJsonString(), "The HTTPS proxy is left to default to the HTTP one, and the old single proxy is gone.");
         Assert.AreEqual("""["corp.example","10.0.0.0/8"]""", relay["NoProxy"]!.ToJsonString());
         Assert.IsFalse((bool)relay["DenyLocalDestinations"]!);
         Assert.AreEqual(64, (int)relay["limits"]!["MaxConnections"]!);
@@ -47,12 +51,12 @@ public sealed class SettingsTests
     public void Save_refuses_invalid_settings_and_leaves_the_file_alone()
     {
         var path = Path.Combine(_directory, "settings.json");
-        var settings = new UserSettings(3128, "proxy.example.com", 0, [], DenyLocalDestinations: true, StartAtLogin: true);
+        var settings = new UserSettings(3128, "proxy.example.com", 8080, "", 0, [], DenyLocalDestinations: true, StartAtLogin: true);
 
         var problems = new UserSettingsStore(path).Save(settings, new RelayOptions());
 
         Assert.HasCount(1, problems);
-        StringAssert.Contains(problems[0], "Upstream:Port");
+        StringAssert.Contains(problems[0], "Upstream:Https:Port");
         Assert.IsFalse(File.Exists(path));
     }
 

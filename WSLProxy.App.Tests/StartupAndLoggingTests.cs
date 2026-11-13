@@ -3,11 +3,15 @@ using System.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using WSLProxy.Relay;
+using WSLProxy.Relay.Configuration;
 using WSLProxy.UI.Diagnostics;
+using WSLProxy.UI.Settings;
 
 namespace WSLProxy.App.Tests;
 
-/// <summary>Setting aside a corrupt settings file, what the loggers write and keep, and the debug logging switch.</summary>
+/// <summary>Setting aside a corrupt settings file, binding a saved one, what the loggers write and keep, and the debug logging switch.</summary>
 [TestClass]
 public sealed class StartupAndLoggingTests
 {
@@ -53,6 +57,28 @@ public sealed class StartupAndLoggingTests
         }
 
         Assert.IsTrue(File.Exists(path));
+    }
+
+    [TestMethod]
+    public void Saved_settings_bind_over_the_defaults_with_the_https_proxy_borrowing_the_http_one()
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        var saved = new UserSettingsStore(path).Save(
+            new UserSettings(3129, "proxy.example.com", 8080, "", null, ["corp.example"], DenyLocalDestinations: true, StartAtLogin: false),
+            new RelayOptions());
+        Assert.IsEmpty(saved);
+
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"))
+            .AddJsonFile(path)
+            .Build();
+        using var services = new ServiceCollection().AddLogging().AddRelay(configuration).BuildServiceProvider();
+        var options = services.GetRequiredService<IOptionsMonitor<RelayOptions>>().CurrentValue;
+
+        Assert.IsNull(options.ConfigurationError);
+        Assert.AreEqual(new UpstreamEndpoint("proxy.example.com", 8080), options.Upstream.ForHttp);
+        Assert.AreEqual(new UpstreamEndpoint("proxy.example.com", 8080), options.Upstream.ForHttps);
+        Assert.AreEqual(3129, options.ListenPort);
     }
 
     [TestMethod]
