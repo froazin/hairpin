@@ -22,10 +22,10 @@
     <InternalsVisibleTo Include="WSLProxy.UI.Tests" />
   </ItemGroup>
 
-  <!-- Tray glyphs: black for a light taskbar, white for a dark one. -->
+  <!-- Tray glyphs: one for a light taskbar, one for a dark taskbar. -->
   <ItemGroup>
-    <EmbeddedResource Include="..\Assets\wslproxy-black.ico" LogicalName="WSLProxy.UI.Tray.Black.ico" Link="Assets\wslproxy-black.ico" />
-    <EmbeddedResource Include="..\Assets\wslproxy-white.ico" LogicalName="WSLProxy.UI.Tray.White.ico" Link="Assets\wslproxy-white.ico" />
+    <EmbeddedResource Include="..\Assets\wslproxy-light-theme.ico" LogicalName="WSLProxy.UI.Tray.LightTheme.ico" Link="Assets\wslproxy-light-theme.ico" />
+    <EmbeddedResource Include="..\Assets\wslproxy-dark-theme.ico" LogicalName="WSLProxy.UI.Tray.DarkTheme.ico" Link="Assets\wslproxy-dark-theme.ico" />
   </ItemGroup>
 
 </Project>

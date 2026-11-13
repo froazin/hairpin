@@ -18,7 +18,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `WSLProxy.UI/` | The tray icon, flyout and settings window, as a WPF class library |
 | `WSLProxy.Relay.Tests/` | MSTest tests of the relay engine |
 | `WSLProxy.App.Tests/`, `WSLProxy.UI.Tests/` | MSTest tests of the executable's start-up and logging, and of the tray UI's logic, without WPF windows or Win32 calls |
-| `Assets/` | Icons: `wslproxy-logo.ico` is the exe icon, and the black and white `.ico` files are the tray glyphs |
+| `Assets/` | Icons: `wslproxy-logo.ico` is the exe icon, and `wslproxy-light-theme.ico` and `wslproxy-dark-theme.ico` are the tray glyphs for a light and a dark taskbar |
 | `build.ps1` | The local build: version, test, publish, sign and checksums |
 | `Docs/` | Design docs for engineers changing the code |
 | `.github/workflows/ci.yml` | Builds and tests each pull request with `build.ps1`, then Claude reviews it. The release workflow calls it to build what it publishes. Read [Docs/ci.md](Docs/ci.md) before you change it |

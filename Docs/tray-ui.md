@@ -28,7 +28,7 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 
 `TrayIcon` calls `Shell_NotifyIcon` (version 4) directly from a hidden top-level window. A message-only window would miss the broadcasts it relies on.
 
-- **Glyph:** `TrayGlyph.Choose` picks the black or white `.ico` from `SystemUsesLightTheme`, which describes the taskbar, not `AppsUseLightTheme`, which describes apps. Under high contrast it contrasts with the high-contrast window colour instead.
+- **Glyph:** `TrayGlyph.Choose` picks the light theme or dark theme `.ico` from `SystemUsesLightTheme`, which describes the taskbar, not `AppsUseLightTheme`, which describes apps. Under high contrast it contrasts with the high-contrast window colour instead.
 - **Size:** the small-icon size at the taskbar's own DPI (`GetSystemMetricsForDpi` with the DPI of `Shell_TrayWnd`), loaded with `CreateIconFromResourceEx` from the exact image in the `.ico`, or the next larger one.
 - **Updates:** `WM_SETTINGCHANGE` (including the `ImmersiveColorSet` theme broadcast), `WM_SYSCOLORCHANGE`, `WM_DISPLAYCHANGE` and `WM_DPICHANGED` recheck the glyph and size. `TaskbarCreated`, sent when Explorer restarts or the primary display's DPI changes, adds the icon again.
 - **Badge:** when a [settings check](#settings-checks) finds a problem, `TrayBadge` draws a small red X in the glyph's lower-right corner, with a transparent gap around it, and `IconFile.FromBgra` turns the pixels into the 32-bit icon image `CreateIconFromResourceEx` reads.

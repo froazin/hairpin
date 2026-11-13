@@ -8,11 +8,11 @@ namespace WSLProxy.UI.Tests;
 public sealed class TrayTests
 {
     [TestMethod]
-    [DataRow(false, 0d, 1, Glyph.Black, DisplayName = "Light taskbar")]
-    [DataRow(false, 0d, 0, Glyph.White, DisplayName = "Dark taskbar")]
-    [DataRow(false, 255d, null, Glyph.White, DisplayName = "Missing value means dark, as Windows treats it")]
-    [DataRow(true, 0d, 1, Glyph.White, DisplayName = "High contrast with a dark window ignores the theme")]
-    [DataRow(true, 255d, 0, Glyph.Black, DisplayName = "High contrast with a light window ignores the theme")]
+    [DataRow(false, 0d, 1, Glyph.LightTheme, DisplayName = "Light taskbar")]
+    [DataRow(false, 0d, 0, Glyph.DarkTheme, DisplayName = "Dark taskbar")]
+    [DataRow(false, 255d, null, Glyph.DarkTheme, DisplayName = "Missing value means dark, as Windows treats it")]
+    [DataRow(true, 0d, 1, Glyph.DarkTheme, DisplayName = "High contrast with a dark window ignores the theme")]
+    [DataRow(true, 255d, 0, Glyph.LightTheme, DisplayName = "High contrast with a light window ignores the theme")]
     public void Glyph_follows_the_taskbar_theme_or_the_high_contrast_window(bool highContrast, double windowLuma, int? systemUsesLightTheme, Glyph expected)
     {
         Assert.AreEqual(expected, TrayGlyph.Choose(highContrast, windowLuma, systemUsesLightTheme));
