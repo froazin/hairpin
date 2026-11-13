@@ -41,7 +41,7 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 
 Signing needs `signtool.exe` from the Windows SDK and a code signing certificate in your certificate store. Without a thumbprint, the script warns and leaves the binaries unsigned.
 
-With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundle. It also needs `makeappx.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
+With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundle. It also needs `makeappx.exe` and `makepri.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
 
 ### A test certificate for MSIX
 
