@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -61,12 +62,6 @@ public partial class FlyoutWindow : Window
     /// <summary>Raised when the user asks for the settings window.</summary>
     public event EventHandler? SettingsRequested;
 
-    /// <summary>Raised when the user asks for the log window.</summary>
-    public event EventHandler? LogsRequested;
-
-    /// <summary>Raised when the user turns debug logging on (true) or off (false).</summary>
-    public event EventHandler<bool>? DebugLoggingRequested;
-
     /// <summary>Raised when the user asks to quit.</summary>
     public event EventHandler? QuitRequested;
 
@@ -103,7 +98,13 @@ public partial class FlyoutWindow : Window
         Activate();
     }
 
-    /// <summary>Places the flyout beside the anchor, inside the work area and clear of the icon, in physical pixels.</summary>
+    /// <summary>The space kept between the flyout and the taskbar or screen edge, in device-independent pixels, as Windows 11's own flyouts keep.</summary>
+    public const int EdgeGap = 12;
+
+    /// <summary>
+    /// Places the flyout beside the anchor, inside the work area and clear of the icon, then moves it <see cref="EdgeGap"/>
+    /// in from the work area's edges, in physical pixels.
+    /// </summary>
     private void Place()
     {
         if (_anchor is not { } anchor)
@@ -118,7 +119,32 @@ public partial class FlyoutWindow : Window
         var exclude = new RECT { Left = (int)anchor.Left, Top = (int)anchor.Top, Right = (int)anchor.Right, Bottom = (int)anchor.Bottom };
         if (CalculatePopupWindowPosition(ref point, ref size, TPM_RIGHTALIGN | TPM_BOTTOMALIGN | TPM_VERTICAL | TPM_WORKAREA, ref exclude, out var placed))
         {
+            var info = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+            if (GetMonitorInfo(MonitorFromRect(ref placed, MONITOR_DEFAULTTONEAREST), ref info))
+            {
+                var gap = (int)Math.Round(EdgeGap * GetDpiForWindow(hwnd) / 96.0);
+                (placed.Left, placed.Top) = KeepClear(placed, info.rcWork, gap);
+            }
+
             SetWindowPos(hwnd, HWND_TOPMOST, placed.Left, placed.Top, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
+
+    /// <summary>
+    /// Where <paramref name="window"/> moves to stay <paramref name="gap"/> pixels inside each edge of
+    /// <paramref name="work"/>, the work area, which ends where the taskbar starts. On an axis where the window and two gaps
+    /// don't fit, it keeps inside the work area without the gaps.
+    /// </summary>
+    internal static (int Left, int Top) KeepClear(RECT window, RECT work, int gap)
+    {
+        return (Inset(window.Left, window.Right - window.Left, work.Left, work.Right),
+            Inset(window.Top, window.Bottom - window.Top, work.Top, work.Bottom));
+
+        int Inset(int start, int length, int min, int max)
+        {
+            var low = min + gap;
+            var high = max - gap - length;
+            return high >= low ? Math.Clamp(start, low, high) : Math.Clamp(start, min, Math.Max(min, max - length));
         }
     }
 
@@ -140,7 +166,10 @@ public partial class FlyoutWindow : Window
         StateBadge.SetResourceReference(BackgroundProperty, brushKey.Replace("Brush", "BackgroundBrush", StringComparison.Ordinal));
 
         EndpointText.Text = snapshot.ListenEndpoint;
-        UpstreamText.Text = DescribeUpstreams(snapshot.HttpUpstream, snapshot.HttpsUpstream);
+        // No upstream proxy is the usual set-up, so the row only appears when there is one.
+        var upstreams = DescribeUpstreams(snapshot.HttpUpstream, snapshot.HttpsUpstream);
+        UpstreamText.Text = upstreams ?? string.Empty;
+        UpstreamLabel.Visibility = UpstreamText.Visibility = upstreams is null ? Visibility.Collapsed : Visibility.Visible;
 
         ErrorPanel.Visibility = string.IsNullOrEmpty(snapshot.LastError) ? Visibility.Collapsed : Visibility.Visible;
         ErrorText.Text = snapshot.LastError ?? string.Empty;
@@ -150,12 +179,15 @@ public partial class FlyoutWindow : Window
         PauseGlyph.Text = ((char)(paused ? 0xE768 : 0xE769)).ToString(); // Segoe Fluent Icons: Play, Pause.
     }
 
-    /// <summary>One line when HTTP and HTTPS share a proxy, as they usually do, or a line for each when they don't.</summary>
-    private static string DescribeUpstreams(UpstreamStatus? http, UpstreamStatus? https)
+    /// <summary>
+    /// One line when HTTP and HTTPS share a proxy, as they usually do, a line for each when they don't, or null when neither
+    /// has one.
+    /// </summary>
+    private static string? DescribeUpstreams(UpstreamStatus? http, UpstreamStatus? https)
     {
         if (http is null && https is null)
         {
-            return "None: connecting directly";
+            return null;
         }
 
         return http == https
@@ -199,9 +231,6 @@ public partial class FlyoutWindow : Window
         ProblemsList.ItemsSource = problems;
         ProblemsList.Visibility = problems.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
-
-    /// <summary>Shows whether debug logging is on.</summary>
-    public void SetDebugLogging(bool enabled) => DebugBox.IsChecked = enabled;
 
     /// <summary>Confirms on the button that the setup was copied.</summary>
     public void ShowCopied()
@@ -267,14 +296,6 @@ public partial class FlyoutWindow : Window
         HideFlyout();
         SettingsRequested?.Invoke(this, EventArgs.Empty);
     }
-
-    private void OnLogsClick(object sender, RoutedEventArgs e)
-    {
-        HideFlyout();
-        LogsRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void OnDebugClick(object sender, RoutedEventArgs e) => DebugLoggingRequested?.Invoke(this, DebugBox.IsChecked != true);
 
     private void OnQuitClick(object sender, RoutedEventArgs e) => QuitRequested?.Invoke(this, EventArgs.Empty);
 }

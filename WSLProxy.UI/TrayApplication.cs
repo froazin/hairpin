@@ -72,9 +72,6 @@ public sealed partial class TrayApplication(IRelayStatus status, IRelayControl c
         };
         _flyout.CopyRequested += (_, _) => CopyWslSetup();
         _flyout.SettingsRequested += (_, _) => ShowSettings();
-        _flyout.LogsRequested += (_, _) => ShowLogs();
-        _flyout.DebugLoggingRequested += (_, enabled) => SetDebugLogging(enabled);
-        _flyout.SetDebugLogging(_debugLogging.IsEnabled);
         _flyout.QuitRequested += (_, _) => _application.Shutdown();
 
         _tray = new TrayIcon();
@@ -225,6 +222,9 @@ public sealed partial class TrayApplication(IRelayStatus status, IRelayControl c
         }
 
         _settings = new SettingsWindow(current, Save);
+        _settings.SetDebugLogging(_debugLogging.IsEnabled);
+        _settings.LogsRequested += (_, _) => ShowLogs();
+        _settings.DebugLoggingRequested += (_, enabled) => SetDebugLogging(enabled);
         _settings.Closed += (_, _) => _settings = null;
         _settings.Show();
         _settings.Activate();
@@ -258,7 +258,7 @@ public sealed partial class TrayApplication(IRelayStatus status, IRelayControl c
     private void SetDebugLogging(bool enabled)
     {
         _debugLogging.SetEnabled(enabled);
-        _flyout?.SetDebugLogging(_debugLogging.IsEnabled);
+        _settings?.SetDebugLogging(_debugLogging.IsEnabled);
         LogDebugLogging(_logger, enabled ? "on" : "off");
     }
 
