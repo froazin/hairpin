@@ -103,7 +103,8 @@ public partial class FlyoutWindow : Window
 
     /// <summary>
     /// Places the flyout beside the anchor, inside the work area and clear of the icon, then moves it <see cref="EdgeGap"/>
-    /// in from the work area's edges, in physical pixels.
+    /// in from the work area's edges, in physical pixels. A taskbar set to auto-hide isn't part of the work area, so the
+    /// flyout also keeps clear of the space it takes when it's shown.
     /// </summary>
     private void Place()
     {
@@ -123,11 +124,69 @@ public partial class FlyoutWindow : Window
             if (GetMonitorInfo(MonitorFromRect(ref placed, MONITOR_DEFAULTTONEAREST), ref info))
             {
                 var gap = (int)Math.Round(EdgeGap * GetDpiForWindow(hwnd) / 96.0);
-                (placed.Left, placed.Top) = KeepClear(placed, info.rcWork, gap);
+                var work = AvoidAutoHideBars(info.rcWork, info.rcMonitor, AutoHideBars(info.rcMonitor));
+                (placed.Left, placed.Top) = KeepClear(placed, work, gap);
             }
 
             SetWindowPos(hwnd, HWND_TOPMOST, placed.Left, placed.Top, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
         }
+    }
+
+    /// <summary>The auto-hide taskbars on <paramref name="monitor"/>'s edges, each with its edge and its full thickness.</summary>
+    private static List<(uint Edge, int Thickness)> AutoHideBars(RECT monitor)
+    {
+        var bars = new List<(uint Edge, int Thickness)>();
+        foreach (var edge in (uint[])[ABE_LEFT, ABE_TOP, ABE_RIGHT, ABE_BOTTOM])
+        {
+            var data = new APPBARDATA { cbSize = (uint)Marshal.SizeOf<APPBARDATA>(), uEdge = edge, rc = monitor };
+            var bar = SHAppBarMessage(ABM_GETAUTOHIDEBAREX, ref data);
+
+            // A hidden taskbar slides almost off the screen but keeps its size, so its size is the space it takes when shown.
+            if (bar != IntPtr.Zero && GetWindowRect(bar, out var rect))
+            {
+                bars.Add((edge, edge is ABE_LEFT or ABE_RIGHT ? rect.Right - rect.Left : rect.Bottom - rect.Top));
+            }
+        }
+
+        return bars;
+    }
+
+    /// <summary>
+    /// <paramref name="work"/> pulled in from each edge of <paramref name="monitor"/> that has an auto-hide taskbar, by the
+    /// taskbar's thickness. Windows leaves an auto-hide taskbar out of the work area, so without this the flyout would sit
+    /// under it once it's shown. A thickness over half the monitor is ignored as bogus.
+    /// </summary>
+    internal static RECT AvoidAutoHideBars(RECT work, RECT monitor, IEnumerable<(uint Edge, int Thickness)> bars)
+    {
+        ArgumentNullException.ThrowIfNull(bars);
+        foreach (var (edge, thickness) in bars)
+        {
+            var span = edge is ABE_LEFT or ABE_RIGHT ? monitor.Right - monitor.Left : monitor.Bottom - monitor.Top;
+            if (thickness <= 0 || thickness > span / 2)
+            {
+                continue;
+            }
+
+            switch (edge)
+            {
+                case ABE_LEFT:
+                    work.Left = Math.Max(work.Left, monitor.Left + thickness);
+                    break;
+                case ABE_TOP:
+                    work.Top = Math.Max(work.Top, monitor.Top + thickness);
+                    break;
+                case ABE_RIGHT:
+                    work.Right = Math.Min(work.Right, monitor.Right - thickness);
+                    break;
+                case ABE_BOTTOM:
+                    work.Bottom = Math.Min(work.Bottom, monitor.Bottom - thickness);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return work;
     }
 
     /// <summary>

@@ -39,6 +39,11 @@ internal static partial class NativeMethods
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     public const int DWMWCP_ROUND = 2;
     public const uint MONITOR_DEFAULTTONEAREST = 0x2;
+    public const uint ABM_GETAUTOHIDEBAREX = 0x0000000B;
+    public const uint ABE_LEFT = 0;
+    public const uint ABE_TOP = 1;
+    public const uint ABE_RIGHT = 2;
+    public const uint ABE_BOTTOM = 3;
 
     public static readonly IntPtr HWND_TOPMOST = new(-1);
 
@@ -78,6 +83,17 @@ internal static partial class NativeMethods
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct APPBARDATA
+    {
+        public uint cbSize;
+        public IntPtr hWnd;
+        public uint uCallbackMessage;
+        public uint uEdge;
+        public RECT rc;
+        public IntPtr lParam;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -156,6 +172,9 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+
+    [LibraryImport("shell32.dll")]
+    public static partial IntPtr SHAppBarMessage(uint message, ref APPBARDATA data);
 
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
