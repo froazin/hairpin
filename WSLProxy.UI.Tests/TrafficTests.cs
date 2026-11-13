@@ -103,6 +103,8 @@ public sealed class TrafficTests
         Assert.AreEqual("–", TrafficFormat.Percent(quiet.ErrorRate));
         Assert.AreEqual("2%", TrafficFormat.Percent(0.02));
         Assert.AreEqual("0.5%", TrafficFormat.Percent(0.005));
+        Assert.AreEqual("0%", TrafficFormat.Percent(0));
+        Assert.AreEqual("<0.1%", TrafficFormat.Percent(1d / 3000));
     }
 
     private static TrafficSample Sample(int second, long requests, long down, long up, long errors = 0) =>

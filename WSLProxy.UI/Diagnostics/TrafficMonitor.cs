@@ -106,10 +106,16 @@ public static class TrafficFormat
     /// <summary>A rate given in bytes a second, as bits a second, such as <c>800 b/s</c>, <c>12.3 Mb/s</c> or <c>1.2 Gb/s</c>.</summary>
     public static string Speed(double bytesPerSecond) => Scale(bytesPerSecond * 8, 1000, SpeedUnits);
 
-    /// <summary>A share from 0 to 1 as a percentage, such as <c>0%</c>, <c>2.5%</c> or <c>40%</c>, or a dash for none.</summary>
-    public static string Percent(double? share) => share is { } value
-        ? (value * 100).ToString(value is > 0 and < 0.1 ? "0.#" : "0", CultureInfo.CurrentCulture) + "%"
-        : "–";
+    /// <summary>
+    /// A share from 0 to 1 as a percentage, such as <c>0%</c>, <c>2.5%</c> or <c>40%</c>, or a dash for none. A share above
+    /// 0 that would round to <c>0%</c> shows as <c>&lt;0.1%</c>, so it never reads as none.
+    /// </summary>
+    public static string Percent(double? share) => share switch
+    {
+        null => "–",
+        > 0 and < 0.0005 => "<" + 0.1.ToString("0.#", CultureInfo.CurrentCulture) + "%",
+        { } value => (value * 100).ToString(value is > 0 and < 0.1 ? "0.#" : "0", CultureInfo.CurrentCulture) + "%",
+    };
 
     private static string Scale(double amount, double step, string[] units)
     {
