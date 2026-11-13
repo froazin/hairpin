@@ -10,7 +10,7 @@
         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
         UseLayoutRounding="True">
     <DockPanel Margin="16">
-        <!-- Filters and actions. -->
+        <!-- Filters. -->
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12" LastChildFill="False">
             <ComboBox x:Name="LevelBox" Width="190" SelectedIndex="1" SelectionChanged="OnFilterChanged"
                       AutomationProperties.Name="Lowest level to show">
@@ -24,15 +24,20 @@
                      AutomationProperties.Name="Show only lines containing this text" ToolTip="Show only lines containing this text" />
             <CheckBox x:Name="FollowBox" Content="Follow new lines" IsChecked="True" Margin="12,0,0,0" VerticalAlignment="Center"
                       Checked="OnFollowChanged" />
-            <Button DockPanel.Dock="Right" Content="Open log folder" Margin="8,0,0,0" Click="OnOpenFolderClick" />
-            <Button DockPanel.Dock="Right" Content="Clear" Margin="8,0,0,0" Click="OnClearClick"
-                    ToolTip="Clear the lines kept in memory. The log files aren't changed." />
-            <Button DockPanel.Dock="Right" x:Name="CopyButton" Content="Copy" Click="OnCopyClick"
-                    ToolTip="Copy the lines shown to the clipboard" />
         </DockPanel>
 
-        <TextBlock x:Name="SummaryText" DockPanel.Dock="Bottom" Margin="0,8,0,0"
-                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+        <!-- Actions on the lines shown, beside how many there are. -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Button DockPanel.Dock="Right" Content="Open log folder" Margin="8,0,0,0" Click="OnOpenFolderClick" />
+            <Button DockPanel.Dock="Right" x:Name="ExportButton" Content="Export to desktop" Margin="8,0,0,0" Click="OnExportClick"
+                    ToolTip="Save the lines shown to a text file on the desktop" />
+            <Button DockPanel.Dock="Right" x:Name="CopyButton" Content="Copy" Margin="8,0,0,0" Click="OnCopyClick"
+                    ToolTip="Copy the lines shown to the clipboard" />
+            <Button DockPanel.Dock="Right" Content="Clear" Margin="8,0,0,0" Click="OnClearClick"
+                    ToolTip="Clear the lines kept in memory. The log files aren't changed." />
+            <TextBlock x:Name="SummaryText" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+        </DockPanel>
 
         <ListView x:Name="EntriesList" FontFamily="Cascadia Mono, Consolas" FontSize="12"
                   VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"

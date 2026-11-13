@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using WSLProxy.UI.Diagnostics;
@@ -23,9 +25,9 @@ public partial class LogWindow : Window
     public LogWindow(LogStore store, Action openFolder)
     {
         ArgumentNullException.ThrowIfNull(store);
-        InitializeComponent();
         _store = store;
         OpenFolder = openFolder;
+        InitializeComponent();
         _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, OnRefreshTick, Dispatcher);
         _store.Changed += OnStoreChanged;
         Closed += (_, _) =>
@@ -64,6 +66,13 @@ public partial class LogWindow : Window
 
     private void Refresh()
     {
+        // The level box and the follow box raise their events while InitializeComponent is still building the window, before
+        // the list exists. The constructor refreshes once it has.
+        if (EntriesList is null)
+        {
+            return;
+        }
+
         Interlocked.Exchange(ref _dirty, 0);
         var minimum = Minimums[Math.Clamp(LevelBox.SelectedIndex, 0, Minimums.Length - 1)];
         _rows = LogView.Filter(_store.Snapshot(), minimum, FilterBox.Text);
@@ -77,14 +86,7 @@ public partial class LogWindow : Window
         }
     }
 
-    private void OnFilterChanged(object sender, RoutedEventArgs e)
-    {
-        // SelectionChanged fires while InitializeComponent is still building the window.
-        if (EntriesList is not null)
-        {
-            Refresh();
-        }
-    }
+    private void OnFilterChanged(object sender, RoutedEventArgs e) => Refresh();
 
     private void OnFollowChanged(object sender, RoutedEventArgs e) => Refresh();
 
@@ -93,14 +95,7 @@ public partial class LogWindow : Window
         try
         {
             Clipboard.SetText(string.Join(Environment.NewLine, _rows));
-            CopyButton.Content = "Copied";
-            var reset = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            reset.Tick += (_, _) =>
-            {
-                reset.Stop();
-                CopyButton.Content = "Copy";
-            };
-            reset.Start();
+            ShowBriefly(CopyButton, "Copied", "Copy");
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
@@ -112,6 +107,48 @@ public partial class LogWindow : Window
     {
         _store.Clear();
         Refresh();
+    }
+
+    // Saves the lines shown to a new text file on the desktop, without asking where. The write runs off the UI thread.
+    private async void OnExportClick(object sender, RoutedEventArgs e)
+    {
+        var now = DateTimeOffset.Now;
+        var text = LogView.Export(_rows, now);
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        if (desktop.Length == 0)
+        {
+            ShowBriefly(ExportButton, "Couldn't save", "Export to desktop");
+            return;
+        }
+
+        var path = Path.Combine(desktop, LogView.ExportFileName(now));
+        ExportButton.IsEnabled = false;
+        try
+        {
+            await Task.Run(() => File.WriteAllText(path, text)).ConfigureAwait(true);
+            ShowBriefly(ExportButton, "Saved to desktop", "Export to desktop");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowBriefly(ExportButton, "Couldn't save", "Export to desktop");
+        }
+        finally
+        {
+            ExportButton.IsEnabled = true;
+        }
+    }
+
+    // Shows a result on a button for two seconds, then puts its label back.
+    private static void ShowBriefly(Button button, string result, string label)
+    {
+        button.Content = result;
+        var reset = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        reset.Tick += (_, _) =>
+        {
+            reset.Stop();
+            button.Content = label;
+        };
+        reset.Start();
     }
 
     private void OnOpenFolderClick(object sender, RoutedEventArgs e) => OpenFolder();
