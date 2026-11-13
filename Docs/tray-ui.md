@@ -86,7 +86,7 @@ A broken settings file never stops the app. At start-up, a file that isn't valid
 Every log line goes to two places, through `Microsoft.Extensions.Logging` providers that share `LogFormat`, so they say the same thing:
 
 - **Files:** `FileLoggerProvider` writes one file per day, `%LOCALAPPDATA%\WSLProxy\logs\relay-yyyyMMdd.log`, in UTC, from a background queue so logging never blocks the relay. It keeps `App:LogRetentionDays` days (7 by default).
-- **Memory:** `MemoryLoggerProvider` adds each line to `LogStore`, which the log window shows. `LogStore` is a `RingBuffer` of `App:LogWindowLines` lines (1,000 by default, from 100 to 10,000) that drops the oldest line when it's full, and it cuts each message to 1,000 characters, so it holds about 2 MB at the most. The log window redraws at most four times a second, and only while it's open. While its Follow new lines box is off, it holds new lines back, so the list doesn't jump while the user reads.
+- **Memory:** `MemoryLoggerProvider` adds each line to `LogStore`, which the log window shows. `LogStore` is a `RingBuffer` of `App:LogWindowLines` lines (1,000 by default, from 100 to 10,000) that drops the oldest line when it's full, and it cuts each message to 1,000 characters, so it holds about 2 MB with the default 1,000 lines and about 20 MB at the 10,000-line maximum. The log window redraws at most four times a second, and only while it's open. While its Follow new lines box is off, it holds new lines back, so the list doesn't jump while the user reads.
 
 Exceptions are logged by type only. Request lines carry `host:port` and status, which is a browsing history of sorts: keep the retention short.
 
