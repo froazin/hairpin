@@ -23,6 +23,7 @@ Early development. Nothing has been released yet, and user docs will follow in t
 
 ## For engineers
 
-- The code is a .NET 10 solution in [src/](src/), with tests in [tests/](tests/).
+- The code is a .NET 10 solution, [WSLProxy.slnx](WSLProxy.slnx), with one folder per project at the root.
 - [CONTRIBUTING.md](CONTRIBUTING.md) covers building, testing, dependencies, versions and releases.
+- [Docs/ci.md](Docs/ci.md) and [Docs/releases.md](Docs/releases.md): how CI builds and reviews each change, and how releases are made.
 - The project is licensed under the [MIT License](LICENSE).

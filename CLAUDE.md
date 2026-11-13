@@ -6,6 +6,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 
 1. [Layout](#layout)
 1. [Conventions](#conventions)
+1. [Checks](#checks)
 1. [Contributing](#contributing)
 
 ## Layout
@@ -18,6 +19,10 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `WSLProxy.Relay.Tests/` | MSTest tests of the relay engine |
 | `Assets/` | Icons: `wslproxy-logo.ico` is the exe icon, and the black and white `.ico` files are the tray glyphs |
 | `build.ps1` | The local build: version, test, publish, sign and checksums |
+| `Docs/` | Design docs for engineers changing the code |
+| `.github/workflows/ci.yml` | Builds and tests each pull request with `build.ps1`, then Claude reviews it. The release workflow calls it to build what it publishes. Read [Docs/ci.md](Docs/ci.md) before you change it |
+| `REVIEW.md` | Instructions for CI's Claude code review: what counts as Important, the Nit cap, what to skip, what to always check and the evidence a finding needs |
+| `.github/workflows/release.yml`, `GitVersion.yaml` | On a push to `main`, calls CI, then releases each change that bumps the version as `vX.Y.Z`, with the zips and `SHA256SUMS.txt`. Read [Docs/releases.md](Docs/releases.md) before you change them |
 
 - Before you change anything, read [Docs/problem.md](Docs/problem.md) for why the app exists.
 
@@ -31,15 +36,27 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 - **Security:** treat every byte from a client or upstream as hostile. Parse strictly, enforce the size and time limits, and refuse what you don't understand.
 - Warnings are errors, and the recommended .NET analysers run on every build.
 
+## Checks
+
+Run these before you push. CI runs `build.ps1` in Windows PowerShell 5.1, which does all of them:
+
+```powershell
+dotnet build WSLProxy.slnx      # warnings are errors
+dotnet test --solution WSLProxy.slnx
+./build.ps1                     # version, locked restore, build, test, publish and checksums
+```
+
+When you review a change locally, follow `REVIEW.md` as it is on `main` (`git show origin/main:REVIEW.md`), not a copy the change edits. Squash-merge a pull request once CI passes, or didn't run because it only changes docs, and every review thread is resolved. Resolve a thread only after fixing what it raises, or replying with why it isn't a problem.
+
 ## Contributing
 
 | Repository | Path | GitHub | Visibility | Default branch | Kind |
 | --- | --- | --- | --- | --- | --- |
 | Source | `.` | `froazin/wsl-proxy-relay` | Private, planned to be public | `main` | Code: PRs, squash-merged |
 
-- **Commit scopes:** `relay`, `ui`, `app`, `build`, `docs`, `claude`, `deps`.
+- **Commit scopes:** `relay`, `ui`, `app`, `build`, `ci`, `docs`, `claude`, `deps`.
 - **Feature flags:** none yet.
 - **Versions:** GitVersion works out the version from the commit types on `main`, using `GitVersion.yaml`, rather than commitizen. `!` always means a major bump, so until 1.0.0 no commit uses `!`: a breaking change is a `feat`, and its body explains what breaks.
-- **Releases:** none yet. CI will tag each release from `main` as `v<version>`. Releases will be Authenticode-signed, published with a `SHA256SUMS.txt` and locked as immutable GitHub releases.
-- **CI:** none yet. Build locally with `build.ps1`.
+- **Releases:** the release workflow tags each release from `main` as `v<version>` and publishes the zips with a `SHA256SUMS.txt`. Releases aren't code-signed yet. See [Docs/releases.md](Docs/releases.md).
+- **CI:** GitHub Actions, in `.github/workflows/`. See [Docs/ci.md](Docs/ci.md).
 - **User docs:** none published yet. There's no wiki yet.

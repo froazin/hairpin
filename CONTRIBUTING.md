@@ -7,6 +7,7 @@ How to report a problem, propose a change, and build and test WSL Proxy Relay. F
 1. [Report a problem](#report-a-problem)
 1. [Propose a change](#propose-a-change)
 1. [Build and test](#build-and-test)
+1. [CI](#ci)
 1. [Dependencies](#dependencies)
 1. [Commits, branches and pull requests](#commits-branches-and-pull-requests)
 1. [Versions and releases](#versions-and-releases)
@@ -38,6 +39,15 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 - `SHA256SUMS.txt`: a SHA-256 checksum for each zip, in `sha256sum` format.
 
 Signing needs `signtool.exe` from the Windows SDK and a code signing certificate in your certificate store. Without a thumbprint, the script warns and leaves the binaries unsigned.
+
+## CI
+
+Each pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on GitHub Actions, unless it only changes docs or agent settings:
+
+1. `./build.ps1` on Windows Server 2025, in Windows PowerShell 5.1. Download the zips it builds from the run's `packages` artifact.
+1. When the build passes, Claude reviews the change against [REVIEW.md](REVIEW.md) and comments on the pull request. Resolve every thread before you merge, with a fix or a reply.
+
+[Docs/ci.md](Docs/ci.md) describes the workflow.
 
 ## Dependencies
 
@@ -71,4 +81,5 @@ The version follows [Semantic Versioning](https://semver.org/). GitVersion works
 - Types are lowercase and exact: `Feat:` or `feature:` doesn't bump.
 - Until the project reaches 1.0.0, don't use `!` or a `BREAKING CHANGE` line: a breaking change is a `feat`, and its body explains what breaks.
 - GitVersion needs the full history and tags. In a shallow clone it gives a wrong version without an error, so CI must fetch with `fetch-depth: 0`.
-- Releases will be tagged `v<version>` by CI from `main`, using `MajorMinorPatch`. There's something to release only when `MajorMinorPatch` differs from `VersionSourceSemVer`. Don't create release tags yourself.
+- The release workflow tags each release `v<version>` from `main`, using `MajorMinorPatch`, and publishes the zips with `SHA256SUMS.txt`. There's something to release only when `MajorMinorPatch` differs from `VersionSourceSemVer`. Don't create release tags yourself. [Docs/releases.md](Docs/releases.md) describes the workflow.
+- Releases aren't code-signed yet. Check a download against `SHA256SUMS.txt`.

@@ -44,3 +44,15 @@ updates:
       - dependency-name: "*"
         update-types:
           - version-update:semver-major
+
+  # The pinned actions in .github/workflows/. Dependabot updates the full commit
+  # SHA and the version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope

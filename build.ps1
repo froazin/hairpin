@@ -10,6 +10,7 @@
     4. Publishes a self-contained folder for each runtime.
     5. Signs our own binaries with signtool, when a certificate thumbprint is given.
     6. Zips each folder and writes SHA256SUMS.txt next to the zips.
+    7. Writes GitVersion's variables to version.json, for CI.
 
     Output goes to Artifacts/.
 
@@ -101,6 +102,9 @@ Write-Host "    $($gitVersion.FullSemVer)"
 if (Test-Path $artifacts) { Remove-Item $artifacts -Recurse -Force }
 New-Item $artifacts -ItemType Directory | Out-Null
 
+# CI reads this to decide whether a release is due.
+[IO.File]::WriteAllText((Join-Path $artifacts 'version.json'), ($gitVersionJson -join "`n"))
+
 Write-Host '==> Restoring packages (locked mode)'
 # WSLProxy.App lists every runtime in RuntimeIdentifiers, so one restore covers each publish below.
 Invoke-Native dotnet @('restore', $solution, '--locked-mode')
@@ -110,6 +114,10 @@ Invoke-Native dotnet (@('build', $solution, '-c', $Configuration, '--no-restore'
 
 if ($SkipTests) {
     Write-Host '==> Skipping tests'
+}
+elseif (-not (Get-ChildItem -Path $root -Filter '*.Tests.csproj' -Recurse -Depth 1)) {
+    # dotnet test fails when a solution has no test projects.
+    Write-Warning 'The solution has no test projects yet, so no tests ran.'
 }
 else {
     Write-Host '==> Testing'
