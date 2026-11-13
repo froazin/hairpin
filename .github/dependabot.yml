@@ -1,0 +1,58 @@
+# Dependabot version updates.
+# Every new version waits 7 days before Dependabot proposes it, so a compromised
+# or broken release has time to be caught and pulled first. The cooldown applies
+# to version updates only: security updates still arrive straight away.
+version: 2
+updates:
+  # NuGet packages, the MSTest SDK and the GitVersion tool.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      microsoft-extensions:
+        patterns:
+          - Microsoft.Extensions.*
+      mstest:
+        patterns:
+          - MSTest*
+    ignore:
+      # The app targets .NET 10 LTS. Microsoft.Extensions majors follow .NET
+      # majors, so moving to a new major is a deliberate change, not an update.
+      - dependency-name: Microsoft.Extensions.*
+        update-types:
+          - version-update:semver-major
+
+  # The .NET SDK version in global.json.
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      # Stay on the .NET 10 SDK band until the project chooses to move.
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+
+  # The pinned actions in .github/workflows/. Dependabot updates the full commit
+  # SHA and the version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope

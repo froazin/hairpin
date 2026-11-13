@@ -1,3 +1,44 @@
-# GitVersion Configuration File
-# yaml-language-server: https://gitversion.net/schemas/6.0/GitVersion.configuration.json
+# yaml-language-server: $schema=https://gitversion.net/schemas/6.8/GitVersion.configuration.json
 ---
+# The next version comes only from Conventional Commit types since the latest
+# v-tag, read from the header and every body line, the biggest bump winning:
+#   type! or BREAKING CHANGE: -> major; feat -> minor; fix, refactor, perf -> patch;
+#   any other type (docs, ci, test, chore, build, style ...) -> no bump.
+# With no tags the base is 0.0.0, so the first feat gives 0.1.0.
+workflow: GitHubFlow/v1
+tag-prefix: v
+semantic-version-format: Strict
+# Only the latest tag and the commits since it count. No version is read from
+# branch names, merge messages or a configured next-version.
+strategies:
+  - Fallback
+  - TaggedCommit
+# (?m) makes ^ match at the start of every line, so body lines count.
+# (?-i) makes types case-sensitive, so "Feat:" doesn't bump.
+major-version-bump-message: '(?m-i)^(?:\w+(?:\([^()\r\n]+\))?!|BREAKING[ -]CHANGE):'
+minor-version-bump-message: '(?m-i)^feat(?:\([^()\r\n]+\))?:'
+patch-version-bump-message: '(?m-i)^(?:fix|refactor|perf)(?:\([^()\r\n]+\))?:'
+# Never match: a commit with no bump type simply has no increment.
+no-bump-message: '(?!)'
+branches:
+  main:
+    # SemVer is plain x.y.z on main (ContinuousDelivery would give x.y.z-N).
+    mode: ContinuousDeployment
+    # No bump unless a commit message asks for one.
+    increment: None
+  # Branch and pull request builds are never released. They bump at least the
+  # patch so their pre-release sorts above the latest tag.
+  feature:
+    # feature/*, bugfix/* and other/*
+    regex: ^(?:features?|bugfix|other)[/-](?<BranchName>.+)
+    label: '{BranchName}'
+    increment: Patch
+    source-branches:
+      - main
+  pull-request:
+    increment: Patch
+    source-branches:
+      - main
+      - feature
+  unknown:
+    increment: Patch
