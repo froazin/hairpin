@@ -209,17 +209,17 @@ public partial class FlyoutWindow : Window
     {
         ArgumentNullException.ThrowIfNull(summary);
         _traffic = summary;
-        DownRateText.Text = ByteFormat.Rate(summary.DownPerSecond);
-        UpRateText.Text = ByteFormat.Rate(summary.UpPerSecond);
+        DownRateText.Text = TrafficFormat.Speed(summary.DownPerSecond);
+        UpRateText.Text = TrafficFormat.Speed(summary.UpPerSecond);
         RequestsText.Text = summary.RequestsLastMinute.ToString("N0", CultureInfo.CurrentCulture);
         var latest = summary.Latest;
         OpenText.Text = (latest?.ActiveConnections ?? 0).ToString("N0", CultureInfo.CurrentCulture);
-        ErrorsText.Text = (latest?.Errors ?? 0).ToString("N0", CultureInfo.CurrentCulture);
+        ErrorRateText.Text = TrafficFormat.Percent(summary.ErrorRate);
         var routed = (latest?.DirectRequests ?? 0) + (latest?.UpstreamRequests ?? 0);
         TotalsText.Text = latest is null
             ? "No traffic yet."
             : string.Format(CultureInfo.CurrentCulture, "Since start: {0} down, {1} up, {2:N0} requests{3}.",
-                ByteFormat.Size(latest.BytesDown), ByteFormat.Size(latest.BytesUp), latest.Requests,
+                TrafficFormat.Size(latest.BytesDown), TrafficFormat.Size(latest.BytesUp), latest.Requests,
                 routed == 0 ? string.Empty : string.Format(CultureInfo.CurrentCulture, ", {0:P0} direct", (double)latest.DirectRequests / routed));
         DrawChart();
     }
