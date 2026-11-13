@@ -2,7 +2,8 @@
 name: Release
 
 # Releases main when a push changes something that's built. A change only to the docs or agent settings starts no run.
-# Its commits are still counted in the next release, as they're since the latest tag.
+# Its commits are still counted in the next release, as they're since the latest tag. CI's changes job skips the build
+# of a pull request for the same paths: change both together.
 on:
   push:
     branches:

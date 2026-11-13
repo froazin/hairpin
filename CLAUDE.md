@@ -21,7 +21,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `Assets/` | Icons: `wslproxy-logo.ico` is the exe icon, and `wslproxy-light-theme.ico` and `wslproxy-dark-theme.ico` are the tray glyphs for a light and a dark taskbar |
 | `build.ps1` | The local build: version, test, publish, sign and checksums |
 | `Docs/` | Design docs for engineers changing the code |
-| `.github/workflows/ci.yml` | Builds and tests each pull request with `build.ps1`, then Claude reviews it. The release workflow calls it to build what it publishes. Read [Docs/ci.md](Docs/ci.md) before you change it |
+| `.github/workflows/ci.yml` | Builds and tests each pull request that changes more than docs with `build.ps1`, then Claude reviews it. The release workflow calls it to build what it publishes. Read [Docs/ci.md](Docs/ci.md) before you change it |
 | `REVIEW.md` | Instructions for CI's Claude code review: what counts as Important, the Nit cap, what to skip, what to always check and the evidence a finding needs |
 | `.github/workflows/release.yml`, `GitVersion.yaml` | On a push to `main`, calls CI, then releases each change that bumps the version as `vX.Y.Z`, with the zips and `SHA256SUMS.txt`. Read [Docs/releases.md](Docs/releases.md) before you change them |
 

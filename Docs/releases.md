@@ -14,7 +14,7 @@ How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases
 
 ## Overview
 
-The workflow runs on every push to `main` that changes more than the docs or agent settings: its `paths-ignore` filter skips root Markdown files, `Docs/`, `.claude/`, `.vscode/`, `.github/dependabot.yml` and `LICENSE`. This flowchart shows the jobs:
+The workflow runs on every push to `main` that changes more than the docs or agent settings: its `paths-ignore` filter skips root Markdown files, `Docs/`, `.claude/`, `.vscode/`, `.github/dependabot.yml` and `LICENSE`. CI's `changes` job skips the build of a PR for the same paths, so change both together. This flowchart shows the jobs:
 
 ```mermaid
 flowchart LR
