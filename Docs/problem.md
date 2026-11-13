@@ -91,7 +91,7 @@ WSL falls back to NAT when:
 - `.wslconfig` sets `firewall=false`.
 - The Linux kernel is older than 5.10, or a policy pins another mode.
 
-This is why the first proof of concept only worked with IPv6 enabled on the host. Mirrored mode needs IPv6, but the host doesn't have to use it. The minimal configuration that keeps mirrored mode working while using IPv6 only where it's needed, in line with the Windows 11 CIS benchmark's aim:
+So WSL can only reach the relay on a host where IPv6 is enabled. Mirrored mode needs IPv6, but the host doesn't have to use it. The minimal configuration that keeps mirrored mode working while using IPv6 only where it's needed, in line with the Windows 11 CIS benchmark's aim:
 
 1. Set `DisabledComponents` to `0x20`: IPv6 stays enabled, and Windows prefers IPv4.
 1. Unbind IPv6 from each network adapter with `Disable-NetAdapterBinding -Name <adapter> -ComponentID ms_tcpip6`. The WSL source notes that disabling IPv6 this way is supported.
@@ -100,7 +100,7 @@ This is why the first proof of concept only worked with IPv6 enabled on the host
 ## Alternatives that don't work
 
 - **NAT mode** fixes intercepted traffic but breaks VPN and internal endpoints, which is the bind above.
-- **Consomme mode** (`networkingMode=consomme`, called `virtioproxy` on WSL 2.x) turns Linux frames into host sockets, so in theory the agent should see them. Tested with WSS Agent on WSL 2.x, it doesn't work either (observed).
+- **Consomme mode** (`networkingMode=consomme`, called `virtioproxy` on WSL 2.x) turns Linux frames into host sockets, so in theory the agent should see them. No agent vendor documents it as a fix: Broadcom's only resolution is NAT mode.
 - **Pointing WSL clients at the agent's explicit proxy** (`ep.threatpulse.net:80`) can't work either (inferred, untested): Broadcom says that host is only reachable inside the agent's tunnel, and WSL's own connections are the ones the agent can't handle.
 
 ## How the relay helps
@@ -114,7 +114,7 @@ The relay only carries traffic from clients that use an HTTP proxy. UDP, ICMP an
 
 ## Scope
 
-- Confirmed with Symantec WSS Agent (Cloud SWG) on x64. Not documented for Broadcom's newer Endpoint Security Agent, the only Broadcom agent on ARM64. Microsoft documents a similar failure for Global Secure Access.
+- Documented by Broadcom for Symantec WSS Agent (Cloud SWG). Not documented for Broadcom's newer Endpoint Security Agent, the only Broadcom agent on ARM64. Microsoft documents a similar failure for Global Secure Access.
 - Affects TCP traffic from WSL2 in mirrored mode that the agent intercepts.
 - Traffic that starts on Windows itself is unaffected.
 

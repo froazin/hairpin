@@ -66,7 +66,7 @@ Runs share the `release` concurrency group: a run waits for the one in progress,
 - **The build in CI, the release here.** The job that can write to the repository only publishes what CI built, so no repository code runs with that token.
 - **GitVersion, not commitizen.** It runs on the Windows runner as a pinned .NET local tool, and `build.ps1` already uses it to stamp the binaries.
 - **No release without a bump.** A run whose commits don't bump the version releases nothing, rather than a patch.
-- **Unsigned for now.** The app is a proof of concept, so releases are published with SHA-256 checksums but without Authenticode signatures. `build.ps1` can still sign a local build with `-CertificateThumbprint`.
+- **Unsigned for now.** Releases are published with SHA-256 checksums but without Authenticode signatures, until the project has a code signing certificate. `build.ps1` can still sign a local build with `-CertificateThumbprint`.
 
 ## Limits
 
