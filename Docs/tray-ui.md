@@ -66,7 +66,7 @@ sequenceDiagram
 
 ## Traffic metrics
 
-The flyout's Traffic card shows the speeds down and up now, in bits a second (averaged over the last 3 seconds), a chart of the last 2 minutes, the open connections, requests in the last minute (Req/m), the share of requests in the last 2 minutes that ended in the relay's own error (Err%: `<0.1%` for a share above 0 that would round to `0%`, and a dash when there were no requests), and totals since start, in bytes, with the share of requests that went direct. Every figure above the totals covers a recent window, so they all fall back once traffic stops.
+The flyout's Traffic card shows the speeds down and up now, in bits a second (averaged over the last 3 seconds), a chart of the last 2 minutes, the open connections, requests in the last minute (Req/m), the share of requests in the last 2 minutes that ended in the relay's own error (Err%: `<0.1%` for a share above 0 that would round to `0%`, and a dash when there were no requests), and totals since start, in bytes, with the share of requests that went direct. Apart from the open connections, a live count that a long CONNECT tunnel keeps up, every figure above the totals covers a recent window, so they fall back once traffic stops.
 
 - `RelayService` keeps the totals in `TrafficCounters` and offers them through `IRelayMetrics.Read()`. They're updated as each body or tunnel write completes, so a long CONNECT tunnel counts while it runs. Message heads aren't counted.
 - `TrafficMonitor` samples them once a second into a `RingBuffer` of 300 samples (5 minutes), whether the flyout is open or not, so the chart has history when it opens. That's a fixed few tens of kilobytes, however busy the relay is.
