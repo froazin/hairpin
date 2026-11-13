@@ -57,10 +57,11 @@ When you review a change locally, follow `REVIEW.md` as it is on `main` (`git sh
 | Repository | Path | GitHub | Visibility | Default branch | Kind |
 | --- | --- | --- | --- | --- | --- |
 | Source | `.` | `froazin/wsl-proxy-relay` | Private, planned to be public | `main` | Code: PRs, squash-merged |
+| Wiki | `../wsl-proxy-relay.wiki` | `froazin/wsl-proxy-relay.wiki` | Follows Source | `master` | GitHub wiki: direct commits, and a push publishes |
 
 - **Commit scopes:** `relay`, `ui`, `app`, `build`, `ci`, `docs`, `claude`, `deps`.
 - **Feature flags:** none yet.
 - **Versions:** GitVersion works out the version from the commit types on `main`, using `GitVersion.yaml`, rather than commitizen. `!` always means a major bump, so until 1.0.0 no commit uses `!`: a breaking change is a `feat`, and its body explains what breaks.
 - **Releases:** the release workflow tags each release from `main` as `v<version>` and publishes the zips with a `SHA256SUMS.txt`. Releases aren't code-signed yet. See [Docs/releases.md](Docs/releases.md).
 - **CI:** GitHub Actions, in `.github/workflows/`. See [Docs/ci.md](Docs/ci.md).
-- **User docs:** none published yet. There's no wiki yet.
+- **User docs:** the GitHub wiki is the user guide, and it must need very little updating. It covers what stays true between releases: what the app is for, the tasks and choices users make, and the WSL and Windows steps. Anything that changes between releases, such as the flyout's layout, metric names, error wording, settings-file keys and build steps, lives in `Docs/`, and the wiki links to it. When a change makes a wiki page wrong, update the wiki after the change merges, because a push publishes it.

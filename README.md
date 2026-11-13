@@ -13,13 +13,13 @@
 
 WSL Proxy Relay is a per-user Windows tray app that runs a local HTTP proxy on `127.0.0.1` for WSL2 in mirrored networking mode. WSL traffic sent through it leaves the machine from a Windows process, so endpoint network agents such as Symantec WSS Agent handle it again.
 
+## Using it
+
+The [wiki](https://github.com/froazin/wsl-proxy-relay/wiki) is the user guide. Start with [Installing](https://github.com/froazin/wsl-proxy-relay/wiki/Installing) and [Setting up WSL](https://github.com/froazin/wsl-proxy-relay/wiki/Setting-up-WSL), and see [Troubleshooting](https://github.com/froazin/wsl-proxy-relay/wiki/Troubleshooting) if requests from WSL hang. Download the app from [Releases](https://github.com/froazin/wsl-proxy-relay/releases). It's in early development, so expect changes between releases.
+
 ## Why
 
-In mirrored mode, endpoint network agents can't deliver replies to connections that start inside WSL, so they hang. NAT mode fixes that but breaks VPN and internal endpoints. [Docs/problem.md](Docs/problem.md) explains the problem, its cause and the configuration mirrored mode needs.
-
-## Status
-
-Early development. Nothing has been released yet, and user docs will follow in the project's wiki.
+In mirrored mode, endpoint network agents can't deliver replies to connections that start inside WSL, so they hang. NAT mode fixes that but can make VPN and internal endpoints unreliable. [Docs/problem.md](Docs/problem.md) explains the problem, its cause and the configuration mirrored mode needs.
 
 ## For engineers
 
