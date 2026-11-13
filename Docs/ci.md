@@ -15,13 +15,13 @@ How [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) builds, tests and 
 
 ## Overview
 
-The workflow runs when a PR to `main` is opened, pushed to, reopened or marked ready for review, and when the [release workflow](releases.md) calls it with `workflow_call` on a push to `main`. The `paths-ignore` filter skips a change only to the docs or agent settings: root Markdown files, `Docs/`, `.claude/`, `.vscode/`, `.github/dependabot.yml` and `LICENSE`. This flowchart shows the jobs:
+The workflow runs when a PR to `main` is opened, pushed to, reopened or marked ready for review, and when the [release workflow](releases.md) calls it with `workflow_call` on a push to `main`. It runs on every PR, docs-only ones included, because the `Protect main` ruleset requires its `Build and test` and `Code review` checks, and a workflow that doesn't run reports neither. This flowchart shows the jobs:
 
 ```mermaid
 flowchart LR
     accTitle: The jobs in the CI workflow
-    accDescr: A pull request to main that changes more than docs starts the CI workflow directly. A push to main starts the release workflow, which calls it. The build job runs build.ps1 on Windows and uploads the packages. On a pull request only, when the build passes, the code-review job runs Claude, which comments on the pull request.
-    pr["Pull request to main"] -->|"not only docs"| build["build: build.ps1 on Windows"]
+    accDescr: Every pull request to main starts the CI workflow directly. A push to main that changes more than docs starts the release workflow, which calls it. The build job runs build.ps1 on Windows and uploads the packages. On a pull request only, when the build passes, the code-review job runs Claude, which comments on the pull request.
+    pr["Pull request to main"] -->|"every change"| build["build: build.ps1 on Windows"]
     push["Push to main"] -->|"not only docs"| release["release.yml"]
     release -->|"workflow_call"| build
     build -->|"packages artifact, version outputs"| release
@@ -75,15 +75,13 @@ The `code-review` job asks Claude Sonnet 5.5 to review the lines the PR adds or 
 - **`build.ps1`, not separate steps.** CI and a local build run the same script, so they can't drift apart.
 - **The code review after the build.** No tokens go on code that doesn't build or pass its tests.
 - **The same review as the maintainer's other repositories,** with a prompt and `REVIEW.md` for this one.
-- **A `paths-ignore` filter rather than a check of the change.** A docs-only change can't break the build, so it doesn't run the build or the review.
+- **Every PR runs, docs-only ones included.** The ruleset requires both checks, so a `paths-ignore` filter would leave a docs-only PR unable to merge. A docs-only PR costs one build, and Claude still checks its docs against the code.
 
 ## Limits
 
 - Nothing runs the tray app, opens its windows, or sends WSL traffic through the relay. The tests drive the relay over loopback only, and never WPF or Win32.
 - The tests run only on x64. The ARM64 build is compiled and published, but not run.
 - The review is Claude's judgement, so it can be wrong. The Nit limits are in the prompt, so nothing enforces them.
-- A docs-only PR isn't built or reviewed, so nothing checks that its docs still match the code. That includes a change to `REVIEW.md` on its own.
-- A PR whose checks are skipped has no workflow run at all, so its checks list is empty rather than skipped.
 
 ## Sources
 

@@ -44,7 +44,7 @@ Windows Application Control (Smart App Control, App Control for Business or AppL
 
 ## CI
 
-Each pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on GitHub Actions, unless it only changes docs or agent settings:
+Each pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on GitHub Actions, including one that only changes docs:
 
 1. `./build.ps1` on Windows Server 2025, in Windows PowerShell 5.1. Download the zips it builds from the run's `packages` artifact.
 1. When the build passes, Claude reviews the change against [REVIEW.md](REVIEW.md) and comments on the pull request. Resolve every thread before you merge, with a fix or a reply.

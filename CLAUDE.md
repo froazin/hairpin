@@ -49,7 +49,7 @@ dotnet test --solution WSLProxy.slnx
 ./build.ps1                     # version, locked restore, build, test, publish and checksums
 ```
 
-When you review a change locally, follow `REVIEW.md` as it is on `main` (`git show origin/main:REVIEW.md`), not a copy the change edits. Squash-merge a pull request once CI passes, or didn't run because it only changes docs, and every review thread is resolved. Resolve a thread only after fixing what it raises, or replying with why it isn't a problem.
+When you review a change locally, follow `REVIEW.md` as it is on `main` (`git show origin/main:REVIEW.md`), not a copy the change edits. Squash-merge a pull request once CI passes and every review thread is resolved. Resolve a thread only after fixing what it raises, or replying with why it isn't a problem.
 
 ## Contributing
 
