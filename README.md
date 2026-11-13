@@ -23,7 +23,25 @@ Early development. Nothing has been released yet, and user docs will follow in t
 
 ## For engineers
 
-- The code is a .NET 10 solution, [WSLProxy.slnx](WSLProxy.slnx), with one folder per project at the root.
-- [CONTRIBUTING.md](CONTRIBUTING.md) covers building, testing, dependencies, versions and releases.
+WSLProxyRelay.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages.
+
+```mermaid
+flowchart LR
+    accTitle: WSL Proxy Relay architecture
+    accDescr: Tools in WSL send HTTP and HTTPS through the relay on 127.0.0.1. WSLProxyRelay.exe hosts the relay engine and the tray UI. The relay connects to destinations directly from Windows, where the endpoint agent handles the traffic, or through an optional upstream proxy.
+    wsl[Tools in WSL2] -->|http_proxy=127.0.0.1:3128| relay
+    subgraph exe[WSLProxyRelay.exe]
+        ui[WSLProxy.UI: tray, flyout, settings] -->|status and settings| relay[WSLProxy.Relay: proxy engine]
+    end
+    relay -->|direct, as a Windows process| agent[Endpoint agent]
+    relay -->|optional| upstream[Upstream proxy]
+    agent --> internet[Destinations]
+    upstream --> internet
+```
+
+- [Docs/problem.md](Docs/problem.md): the problem, its cause and the Windows configuration mirrored mode needs.
+- [Docs/relay.md](Docs/relay.md): the proxy engine in `WSLProxy.Relay/`.
+- [Docs/tray-ui.md](Docs/tray-ui.md): the executable and tray UI in `WSLProxy.App/` and `WSLProxy.UI/`.
 - [Docs/ci.md](Docs/ci.md) and [Docs/releases.md](Docs/releases.md): how CI builds and reviews each change, and how releases are made.
+- [CONTRIBUTING.md](CONTRIBUTING.md): building, testing, dependencies, versions and releases.
 - The project is licensed under the [MIT License](LICENSE).

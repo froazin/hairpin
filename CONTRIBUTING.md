@@ -40,6 +40,8 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 
 Signing needs `signtool.exe` from the Windows SDK and a code signing certificate in your certificate store. Without a thumbprint, the script warns and leaves the binaries unsigned.
 
+Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block unsigned executables, and does so unpredictably for new builds (observed). The test project builds no `.exe` for this reason: tests run through the signed `dotnet` host. Releases aren't code-signed yet, so they can be blocked too.
+
 ## CI
 
 Each pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on GitHub Actions, unless it only changes docs or agent settings:
