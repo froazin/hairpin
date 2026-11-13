@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -121,35 +120,6 @@ public partial class LogWindow : Window
     {
         _store.Clear();
         Refresh();
-    }
-
-    // Saves the lines shown to a new text file on the desktop, without asking where. The write runs off the UI thread.
-    private async void OnExportClick(object sender, RoutedEventArgs e)
-    {
-        var now = DateTimeOffset.Now;
-        var text = LogView.Export(_rows, now);
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        if (desktop.Length == 0)
-        {
-            ShowBriefly(ExportButton, "Couldn't save", "Export to desktop");
-            return;
-        }
-
-        var path = Path.Combine(desktop, LogView.ExportFileName(now));
-        ExportButton.IsEnabled = false;
-        try
-        {
-            await Task.Run(() => File.WriteAllText(path, text)).ConfigureAwait(true);
-            ShowBriefly(ExportButton, "Saved to desktop", "Export to desktop");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            ShowBriefly(ExportButton, "Couldn't save", "Export to desktop");
-        }
-        finally
-        {
-            ExportButton.IsEnabled = true;
-        }
     }
 
     // Shows a result on a button for two seconds, then puts its label back.
