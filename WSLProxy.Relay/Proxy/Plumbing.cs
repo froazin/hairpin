@@ -93,6 +93,15 @@ internal static partial class Log
     [LoggerMessage(EventId = 12, Level = LogLevel.Debug, Message = "Connection ended: {Reason}")]
     public static partial void ConnectionEnded(ILogger logger, string reason);
 
+    [LoggerMessage(EventId = 13, Level = LogLevel.Debug, Message = "Opened a server connection to {Host}:{Port} via {Route}")]
+    public static partial void ServerOpened(ILogger logger, string host, int port, RouteKind route);
+
+    [LoggerMessage(EventId = 14, Level = LogLevel.Debug, Message = "Reused the server connection to {Host}:{Port}")]
+    public static partial void ServerReused(ILogger logger, string host, int port);
+
+    [LoggerMessage(EventId = 15, Level = LogLevel.Debug, Message = "Accepted a connection from client port {ClientPort}")]
+    public static partial void Accepted(ILogger logger, int clientPort);
+
     [LoggerMessage(EventId = 20, Level = LogLevel.Information, Message = "Upstream proxy {Upstream} is {Health}")]
     public static partial void UpstreamHealth(ILogger logger, string upstream, Status.UpstreamHealth health);
 }

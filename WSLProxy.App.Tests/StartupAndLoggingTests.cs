@@ -1,10 +1,13 @@
 using System.Globalization;
 using System.IO;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WSLProxy.UI.Diagnostics;
 
 namespace WSLProxy.App.Tests;
 
-/// <summary>Setting aside a corrupt settings file, and what the file logger writes and keeps.</summary>
+/// <summary>Setting aside a corrupt settings file, what the loggers write and keep, and the debug logging switch.</summary>
 [TestClass]
 public sealed class StartupAndLoggingTests
 {
@@ -68,5 +71,31 @@ public sealed class StartupAndLoggingTests
         var line = File.ReadAllText(today).TrimEnd();
         StringAssert.EndsWith(line, " WARN  RelayService: Upstream proxy.example.com failed [InvalidOperationException]");
         Assert.DoesNotContain("secret", line);
+    }
+
+    [TestMethod]
+    public void Debug_switch_turns_debug_lines_on_and_off_live_and_the_log_window_gets_exception_types_only()
+    {
+        var store = new LogStore(capacity: 10);
+        var debug = new DebugLoggingSwitch();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Logging:LogLevel:Default"] = "Information" })
+            .Add(debug)
+            .Build();
+        using var services = new ServiceCollection()
+            .AddLogging(logging => logging.AddConfiguration(configuration.GetSection("Logging")).AddProvider(new MemoryLoggerProvider(store)))
+            .BuildServiceProvider();
+        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("WSLProxy.Relay.Proxy.ClientSession");
+
+        logger.LogDebug("before");
+        debug.SetEnabled(true);
+        logger.LogDebug("while on");
+        debug.SetEnabled(false);
+        logger.LogDebug("after");
+        logger.LogError(new InvalidOperationException("secret.example.com"), "failed");
+
+        Assert.AreEqual("ClientSession while on|ClientSession failed [InvalidOperationException]",
+            string.Join("|", store.Snapshot().Select(e => e.Category + " " + e.Message)));
+        Assert.IsFalse(debug.IsEnabled);
     }
 }

@@ -39,6 +39,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
     private bool _hasValidOptions;
     private int _boundPort;
     private int _active;
+    private string? _appliedFingerprint;
     private long _total;
     private long _sessionIds;
     private int _publishScheduled;
@@ -297,6 +298,11 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
         try
         {
             client.NoDelay = true;
+            if (_logger.IsEnabled(LogLevel.Debug) && client.RemoteEndPoint is System.Net.IPEndPoint remote)
+            {
+                Log.Accepted(_logger, remote.Port);
+            }
+
             var session = new ClientSession(client, this);
             await using (session.ConfigureAwait(false))
             {
@@ -399,6 +405,19 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
             Log.InvalidSettings(_logger, string.Join(" ", validation.Failures));
             Publish(immediate: true);
             return;
+        }
+
+        // Any configuration reload, such as the tray's debug logging switch, re-delivers the options. Keep the runtime when
+        // nothing changed, so kept-alive server connections stay usable and bad bypass entries aren't logged again.
+        var fingerprint = System.Text.Json.JsonSerializer.Serialize(options);
+        lock (_gate)
+        {
+            if (_hasValidOptions && _optionsError is null && fingerprint == _appliedFingerprint)
+            {
+                return;
+            }
+
+            _appliedFingerprint = fingerprint;
         }
 
         NoProxyList.Parse(options.NoProxy, out var errors);

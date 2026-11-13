@@ -11,6 +11,7 @@ using WSLProxy.Relay;
 using WSLProxy.Relay.Configuration;
 using WSLProxy.Relay.Status;
 using WSLProxy.UI;
+using WSLProxy.UI.Diagnostics;
 using WSLProxy.UI.Settings;
 
 namespace WSLProxy.App;
@@ -101,13 +102,20 @@ public static partial class Program
                 source.OnLoadException = context => context.Ignore = true;
             });
 
+        // Last, so the tray's debug logging switch overrides the log levels in both files while it's on.
+        var debugLogging = new DebugLoggingSwitch();
+        ((IConfigurationBuilder)builder.Configuration).Add(debugLogging);
+
         var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
         var retention = int.TryParse(appSection[nameof(AppOptions.LogRetentionDays)], NumberStyles.None, CultureInfo.InvariantCulture, out var days) ? days : 7;
+        var logLines = int.TryParse(appSection[nameof(AppOptions.LogWindowLines)], NumberStyles.None, CultureInfo.InvariantCulture, out var lines) ? lines : 1000;
+        var logStore = new LogStore(Math.Clamp(logLines, 100, 10_000));
 
         // Declared before the host so it's disposed after it, and shutdown messages still reach the file.
         using var fileLogger = new FileLoggerProvider(Path.Combine(_dataDirectory, "logs"), retention);
         builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
         builder.Logging.AddProvider(fileLogger);
+        builder.Logging.AddProvider(new MemoryLoggerProvider(logStore));
 
         builder.Services.AddRelay(builder.Configuration);
         builder.Services.AddSafeOptions<AppOptions>(builder.Configuration, AppOptions.SectionName);
@@ -122,6 +130,8 @@ public static partial class Program
             sp.GetRequiredService<IOptionsMonitor<AppOptions>>(),
             sp.GetRequiredService<UserSettingsStore>(),
             sp.GetRequiredService<StartupRegistration>(),
+            logStore,
+            debugLogging,
             logDirectory,
             sp.GetRequiredService<ILogger<TrayApplication>>()));
 

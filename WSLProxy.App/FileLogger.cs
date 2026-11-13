@@ -28,7 +28,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider
         _writer = Task.Run(WriteLoopAsync);
     }
 
-    public ILogger CreateLogger(string categoryName) => new FileLogger(this, ShortName(categoryName));
+    public ILogger CreateLogger(string categoryName) => new FileLogger(this, LogFormat.ShortName(categoryName));
 
     public void Dispose()
     {
@@ -118,12 +118,6 @@ internal sealed class FileLoggerProvider : ILoggerProvider
         }
     }
 
-    private static string ShortName(string category)
-    {
-        var dot = category.LastIndexOf('.');
-        return dot >= 0 ? category[(dot + 1)..] : category;
-    }
-
     private sealed class FileLogger(FileLoggerProvider provider, string category) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -138,20 +132,9 @@ internal sealed class FileLoggerProvider : ILoggerProvider
             }
 
             // Exceptions are logged by type only: their messages can carry peer data.
-            var suffix = exception is null ? string.Empty : " [" + exception.GetType().Name + "]";
             var line = string.Create(CultureInfo.InvariantCulture,
-                $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} {Level(logLevel)} {category}: {formatter(state, exception)}{suffix}");
+                $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} {LogFormat.Level(logLevel)} {category}: {LogFormat.Message(state, exception, formatter)}");
             provider.Enqueue(line);
         }
-
-        private static string Level(LogLevel level) => level switch
-        {
-            LogLevel.Trace => "TRACE",
-            LogLevel.Debug => "DEBUG",
-            LogLevel.Information => "INFO ",
-            LogLevel.Warning => "WARN ",
-            LogLevel.Error => "ERROR",
-            _ => "CRIT ",
-        };
     }
 }
