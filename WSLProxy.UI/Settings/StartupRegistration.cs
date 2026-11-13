@@ -7,7 +7,8 @@ namespace WSLProxy.UI.Settings;
 /// <summary>
 /// Starts the app at sign-in through the per-user Run key, which needs no admin rights. Respects Task Manager's
 /// Startup apps switch: when the user has turned the entry off there, the app never turns it back on by itself.
-/// Registry errors never throw: the methods report failure instead.
+/// Registry errors never throw: the methods report failure instead. An app installed from the MSIX package uses
+/// <see cref="ForPackage"/> instead, because its package's startup task starts it.
 /// </summary>
 /// <param name="exePath">The exe to start at sign-in.</param>
 /// <param name="enabled">False for development builds, so they never touch the installed build's entry.</param>
@@ -24,6 +25,18 @@ public sealed class StartupRegistration(string exePath, bool enabled)
 
     /// <summary>False when this build mustn't change the registry, such as a development build.</summary>
     public bool Enabled { get; } = enabled;
+
+    /// <summary>
+    /// True when the MSIX package's startup task starts the app, so the user turns it on or off in Windows Settings and
+    /// the app never reads or writes the Run key.
+    /// </summary>
+    public bool ByPackage { get; private init; }
+
+    /// <summary>
+    /// For an app running from its MSIX package. A packaged app's writes to the Run key are virtualised, so Windows
+    /// wouldn't see them, and its install path changes with every update, so it mustn't be recorded anywhere.
+    /// </summary>
+    public static StartupRegistration ForPackage() => new(string.Empty, enabled: false) { ByPackage = true };
 
     /// <summary>
     /// True when Windows will start this product at sign-in: the Run entry exists and the user hasn't turned it off in

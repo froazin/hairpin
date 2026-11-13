@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The MSIX package manifest template. For each runtime, build.ps1 -Msix replaces each placeholder in double braces,
+  writes the result as AppxManifest.xml next to the published files and packs them. It fails if any placeholder is
+  left. Docs/releases.md describes the MSIX build. The placeholders:
+
+  Publisher             The signing certificate's subject, verbatim. It must equal the subject exactly, or the
+                        bundle can't be signed.
+  PublisherDisplayName  The certificate subject's common name, or the -PublisherDisplayName parameter.
+  Version               Major.Minor.Patch.0. Package versions have four parts.
+  Architecture          x64 or arm64, from the runtime identifier.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 uap10 rescap">
+
+  <Identity
+    Name="WSLProxyRelay"
+    Publisher="{{Publisher}}"
+    Version="{{Version}}"
+    ProcessorArchitecture="{{Architecture}}" />
+
+  <Properties>
+    <DisplayName>WSL Proxy Relay</DisplayName>
+    <PublisherDisplayName>{{PublisherDisplayName}}</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+  </Properties>
+
+  <!-- en-gb, because the app's own text is written in British English. -->
+  <Resources>
+    <Resource Language="en-gb" />
+  </Resources>
+
+  <!-- WSL's mirrored networking mode needs Windows 11 22H2 (10.0.22621) or later, so the package does too. -->
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22621.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <!-- A full-trust desktop app at medium integrity, as the zip build runs. uap10 is allowed because MinVersion is
+         10.0.19041 or later. -->
+    <Application
+      Id="WSLProxyRelay"
+      Executable="WSLProxyRelay.exe"
+      uap10:RuntimeBehavior="packagedClassicApp"
+      uap10:TrustLevel="mediumIL">
+      <uap:VisualElements
+        DisplayName="WSL Proxy Relay"
+        Description="Relays WSL traffic through a local HTTP proxy, so it leaves the machine from a Windows process."
+        BackgroundColor="transparent"
+        Square150x150Logo="Images\Square150x150Logo.png"
+        Square44x44Logo="Images\Square44x44Logo.png" />
+      <Extensions>
+        <!-- Start at sign-in. A packaged app's writes to the HKCU Run key are virtualised, so it uses a startup task
+             instead. It takes effect once the user has launched the app, and the user turns it off in Settings or
+             Task Manager. -->
+        <uap5:Extension Category="windows.startupTask">
+          <uap5:StartupTask TaskId="WSLProxyRelay" Enabled="true" DisplayName="WSL Proxy Relay" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

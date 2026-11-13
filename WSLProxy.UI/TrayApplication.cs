@@ -222,6 +222,12 @@ public sealed partial class TrayApplication(IRelayStatus status, IRelayControl c
         }
 
         _settings = new SettingsWindow(current, Save);
+        if (_startup.ByPackage)
+        {
+            // The package's startup task decides, and the app can't read or change it without WinRT.
+            _settings.ShowStartupManagedByWindows();
+        }
+
         _settings.SetDebugLogging(_debugLogging.IsEnabled);
         _settings.LogsRequested += (_, _) => ShowLogs();
         _settings.DebugLoggingRequested += (_, enabled) => SetDebugLogging(enabled);
@@ -232,8 +238,10 @@ public sealed partial class TrayApplication(IRelayStatus status, IRelayControl c
 
     private IReadOnlyList<string> Save(UserSettings settings)
     {
+        // Only a build that manages the Run key reads it: not a development build, and not the MSIX package.
         var problems = _store.Save(settings, _relayOptions.CurrentValue);
-        if (problems.Count == 0 && settings.StartAtLogin != StartupRegistration.IsEffective() && !_startup.ApplyUserChoice(settings.StartAtLogin))
+        if (problems.Count == 0 && _startup.Enabled && settings.StartAtLogin != StartupRegistration.IsEffective()
+            && !_startup.ApplyUserChoice(settings.StartAtLogin))
         {
             return ["The settings were saved, but Windows didn't let the app change its start-at-sign-in entry."];
         }

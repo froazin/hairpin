@@ -19,7 +19,8 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `WSLProxy.Relay.Tests/` | MSTest tests of the relay engine |
 | `WSLProxy.App.Tests/`, `WSLProxy.UI.Tests/` | MSTest tests of the executable's start-up and logging, and of the tray UI's logic, without WPF windows or Win32 calls |
 | `Assets/` | Icons: `wslproxy-logo.ico` is the exe icon, and `wslproxy-light-theme.ico` and `wslproxy-dark-theme.ico` are the tray glyphs for a light and a dark taskbar |
-| `build.ps1` | The local build: version, test, publish, sign and checksums |
+| `build.ps1` | The local build: version, test, publish, sign and checksums. With `-Msix`, it builds a signed MSIX bundle instead of the zips. CI never uses `-Msix` |
+| `Packaging/` | `AppxManifest.xml`, the MSIX package manifest template that `build.ps1 -Msix` fills in. Read [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) before you change it or the MSIX build |
 | `Docs/` | Design docs for engineers changing the code |
 | `.github/workflows/ci.yml` | Builds and tests each pull request that changes more than docs with `build.ps1`, then Claude reviews it. The release workflow calls it to build what it publishes. Read [Docs/ci.md](Docs/ci.md) before you change it |
 | `REVIEW.md` | Instructions for CI's Claude code review: what counts as Important, the Nit cap, what to skip, what to always check and the evidence a finding needs |

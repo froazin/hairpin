@@ -18,10 +18,11 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 
 `Program.Main` in `WSLProxy.App`, on an STA thread:
 
+1. Asks Windows whether it runs from the MSIX package. `PackageIdentity.FamilyName` calls `GetCurrentPackageFamilyName` and returns null for the zip build, or on any error. The answer picks the data folder, which [Settings files](#settings-files) describes, and how the app [starts at sign-in](#start-at-sign-in).
 1. Takes a mutex named `Local\WSLProxyRelay-<user SID>`. If another instance holds it, the new one exits quietly.
 1. Builds a Generic Host with `Host.CreateEmptyApplicationBuilder`, so no environment variables, command-line arguments or user secrets can override settings. Configuration is `appsettings.json` from the install folder, then the user's settings file.
 1. Registers the relay (`AddRelay`), the settings store, start-at-sign-in and `TrayApplication`, then starts the host, which starts `RelayService`.
-1. Applies the start-at-sign-in setting. `StartupRegistration` is disabled in Debug builds, so development builds never touch the registry.
+1. Applies the start-at-sign-in setting. `StartupRegistration` is disabled in Debug builds and in the MSIX package, so neither touches the registry.
 1. Runs `TrayApplication` until the user quits, then stops the host, giving connections five seconds to finish.
 
 ## Tray icon
@@ -40,7 +41,7 @@ The UI uses WPF's Fluent theme with `ThemeMode.System`, so it follows Windows' l
 
 - **Flyout** (`FlyoutWindow`): a left or right click on the icon opens it next to the icon. `CalculatePopupWindowPosition` places it in physical pixels, clear of the icon and inside the work area, wherever the taskbar is, then `KeepClear` moves it 12 device-independent pixels in from the work area's edges, as Windows 11's own flyouts sit clear of the taskbar. Windows leaves a taskbar set to auto-hide out of the work area, so `AvoidAutoHideBars` first takes the full thickness of any auto-hide taskbar on that monitor (`SHAppBarMessage` with `ABM_GETAUTOHIDEBAREX`) off the work area, and the flyout sits clear of it once it slides in. A flyout too tall for the gaps keeps inside the work area without them. It shows the state, the endpoint it's listening on, upstream health (one line, or one each for HTTP and HTTPS when they differ, and no row when there's no upstream proxy) and any error, then any [settings check](#settings-checks) problems and the [traffic metrics](#traffic-metrics). Its actions are Copy WSL setup, Pause or Resume, Settings and Quit. The window moves to the icon's monitor before it's measured, so per-monitor DPI is right, and it re-places itself when its height changes. A double-click opens it rather than toggling it. It hides when it loses focus or on <kbd>Esc</kbd>.
 - **Log window** (`LogWindow`): the recent log lines held in memory, live, with messages wrapped to the window's width, and a lowest-level filter, a text filter, Clear, Copy, Export to desktop and Open log folder. Copy and Export to desktop take the lines shown, and Export to desktop writes them, under a line with the time zone, to a new `WSL Proxy Relay logs <date> <time>.txt` on the desktop without asking where, off the UI thread. See [Logging](#logging).
-- **Settings window** (`SettingsWindow`): the HTTP and HTTPS upstream proxies, the bypass list, the relay port, the local deny list and start at sign-in, which Save applies, and a Troubleshooting section with the debug logging switch and Show logs, which act straight away. `BypassEntries` checks each bypass entry with `NoProxyRule.TryParse` as it's added, and splits a pasted `no_proxy` value into entries.
+- **Settings window** (`SettingsWindow`): the HTTP and HTTPS upstream proxies, the bypass list, the relay port, the local deny list and start at sign-in, which Save applies (in the MSIX package, Windows manages start at sign-in, as [Start at sign-in](#start-at-sign-in) says), and a Troubleshooting section with the debug logging switch and Show logs, which act straight away. `BypassEntries` checks each bypass entry with `NoProxyRule.TryParse` as it's added, and splits a pasted `no_proxy` value into entries.
 
 This diagram shows how saving reaches the relay:
 
@@ -91,7 +92,14 @@ It checks at start-up, half a second after `.wslconfig` changes, and each time t
 | File | Holds | Who writes it |
 | --- | --- | --- |
 | `appsettings.json` next to the exe | Every default: relay port, upstream, limits, start at sign-in, log retention and log levels | The build. Users shouldn't edit it |
-| `%LOCALAPPDATA%\WSLProxy\settings.json` | The user's choices: port, upstream, bypass list, local deny list, start at sign-in | The settings window |
+| `settings.json` in the data folder | The user's choices: port, upstream, bypass list, local deny list, start at sign-in | The settings window |
+
+The data folder holds `settings.json`, the `logs` folder and `crash.log`. `Program.DataDirectory` picks it:
+
+- **Zip build:** `%LOCALAPPDATA%\WSLProxy`.
+- **MSIX package:** the package's own folder, `%LOCALAPPDATA%\Packages\<package family name>\LocalState`. Windows redirects new files a packaged app writes anywhere else under `%LOCALAPPDATA%` to a private location that Explorer can't see, but not this folder, so Open log folder and the paths the app shows still work. Windows deletes the folder when the user uninstalls the package.
+
+The two builds don't share settings: a user who moves from the zip build to the package starts with the defaults. The rest of this doc writes `%LOCALAPPDATA%\WSLProxy` for the data folder.
 
 [appsettings.schema.json](../WSLProxy.App/appsettings.schema.json) describes both files, with each setting's range and default, and `.vscode/settings.json` gives it to VS Code for completion and checks. It doesn't ship. `SettingsSchemaTests` fails when it and `appsettings.json` disagree about a key or a default, so add a new setting to both.
 
@@ -107,6 +115,11 @@ A broken settings file never stops the app. At start-up, a file that isn't valid
 - When the user turns the setting on in the settings window, it registers and deletes the `StartupApproved` value, because the user has just asked for it.
 - When the setting is off, it removes the Run value whichever copy it names: the value name belongs to this product.
 - Registry errors are logged or shown in the settings window, never thrown.
+
+The MSIX package works differently. Windows virtualises a packaged app's writes to the Run key, so Explorer wouldn't see them, and the install path changes with every update. So the package's manifest declares a startup task instead, which Windows turns on once the user has launched the app once.
+
+- `Program` uses `StartupRegistration.ForPackage()`, which is disabled like a Debug build, so the app never reads or writes the Run key. `ByPackage` tells the tray it's packaged.
+- The settings window hides its start-at-sign-in box and says to use Settings > Apps > Startup or Task Manager's Startup apps instead. The app can't read the startup task's state without WinRT, which the build deliberately avoids. Saving keeps the stored `StartAtLogin` value, and the package ignores it.
 
 ## Logging
 
