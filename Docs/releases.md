@@ -73,6 +73,8 @@ Windows doesn't install an unsigned MSIX package and Intune doesn't deploy one, 
 
 The package is a full-trust desktop app (`runFullTrust`, `packagedClassicApp` at medium integrity) for Windows 11 22H2 (10.0.22621) or later, the oldest Windows that supports WSL's mirrored networking. Windows adds it to the Start menu and the user uninstalls it from Settings like any other app. It starts at sign-in through a startup task rather than the `Run` key, and keeps its settings and logs in the package's `LocalState` folder. [Start at sign-in](tray-ui.md#start-at-sign-in) and [Settings files](tray-ui.md#settings-files) in tray-ui.md describe them.
 
+App Installer lists the `runFullTrust` capability as "Uses all system resources" (observed). That doesn't mean administrator rights. `runFullTrust` is the restricted capability every desktop app packaged as MSIX declares, as opposed to a sandboxed Store app. The manifest also sets `uap10:TrustLevel="mediumIL"`, so the app runs at medium integrity as the signed-in user, with the same rights as the zip build. It never asks to elevate, and Windows keeps its install folder read-only and checks it for tampering.
+
 To install the bundle, the machine must trust the certificate. A certificate that doesn't chain to a root the machine trusts, such as a self-signed one, has to be in `LocalMachine\TrustedPeople`, which needs an elevated session to add. Then double-click the bundle to install it with App Installer, or run `Add-AppxPackage <path-to-bundle>`. Intune deploys the bundle as a line-of-business app, and the devices must trust the certificate in the same way.
 
 ## Security
@@ -90,6 +92,7 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 - **Unsigned for now.** Releases are published with SHA-256 checksums but without Authenticode signatures, until the project has a code signing certificate. `build.ps1` can still sign a local build with `-CertificateThumbprint`.
 - **Zips in CI, MSIX from source.** An MSIX package has to be signed, and the project keeps no signing certificate in GitHub, so CI and releases stay with unsigned zips. `build.ps1 -Msix` lets an organisation build a bundle signed with its own certificate, with the publisher that certificate names.
 - **One bundle, not one package per runtime.** A single `.msixbundle` holds the `x64` and `arm64` packages, and Windows installs the one that matches the machine.
+- **Full trust, not an AppContainer.** An `appContainer` app, such as one under Win32 app isolation, would reach less, but Windows blocks loopback connections to packaged apps by default. Letting an unpackaged client, such as WSL's traffic, connect would need `CheckNetIsolation.exe LoopbackExempt -is` running the whole time, with administrator rights, and Microsoft supports that only for sideloading and debugging. Accepting connections on `127.0.0.1` is the relay's whole job.
 
 ## Limits
 
@@ -110,3 +113,6 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 - https://learn.microsoft.com/en-us/windows/msix/package/sign-app-package-using-signtool
 - https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-f-application
 - https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap5-startuptask
+- https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-manual-conversion
+- https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes
+- https://learn.microsoft.com/en-us/windows/apps/develop/communication/interprocess-communication
