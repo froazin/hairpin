@@ -18,4 +18,9 @@
     <ProjectReference Include="..\WSLProxy.App\WSLProxy.App.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- appsettings.json arrives with the App project's output. The schema doesn't ship, so the tests copy it themselves. -->
+    <None Include="..\WSLProxy.App\appsettings.schema.json" Link="appsettings.schema.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

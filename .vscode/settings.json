@@ -1,4 +1,14 @@
 {
   "dotnet.defaultSolution": "WSLProxy.slnx",
-  "files.eol": "\r\n"
+  "files.eol": "\r\n",
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "**/WSLProxy.App/appsettings.json",
+        "**/Artifacts/Publish/*/appsettings.json",
+        "**/WSLProxy/settings.json"
+      ],
+      "url": "./WSLProxy.App/appsettings.schema.json"
+    }
+  ]
 }

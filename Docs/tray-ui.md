@@ -93,6 +93,8 @@ It checks at start-up, half a second after `.wslconfig` changes, and each time t
 | `appsettings.json` next to the exe | Every default: relay port, upstream, limits, start at sign-in, log retention and log levels | The build. Users shouldn't edit it |
 | `%LOCALAPPDATA%\WSLProxy\settings.json` | The user's choices: port, upstream, bypass list, local deny list, start at sign-in | The settings window |
 
+[appsettings.schema.json](../WSLProxy.App/appsettings.schema.json) describes both files, with each setting's range and default, and `.vscode/settings.json` gives it to VS Code for completion and checks. It doesn't ship. `SettingsSchemaTests` fails when it and `appsettings.json` disagree about a key or a default, so add a new setting to both.
+
 The user's file is layered over `appsettings.json` and reloaded when it changes. `UserSettingsStore` validates before saving, keeps any keys it doesn't own, and writes through to disk in a temporary file that it then moves into place. The default bypass list is empty on purpose, because configuration merges arrays by index.
 
 A broken settings file never stops the app. At start-up, a file that isn't valid JSON is renamed `settings.json.invalid-<time>` and the defaults are used. While running, a file that can't be read or bound is ignored and the last good settings stay in force (`AddSafeOptions` never throws). Anything that still escapes is written to `%LOCALAPPDATA%\WSLProxy\crash.log`, type and stack trace only, and shown to the user.
