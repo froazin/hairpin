@@ -396,7 +396,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
                 }
             }
 
-            Log.BindFailed(_logger, "invalid settings");
+            Log.InvalidSettings(_logger, string.Join(" ", validation.Failures));
             Publish(immediate: true);
             return;
         }

@@ -26,6 +26,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 
 - Before you change anything, read [Docs/problem.md](Docs/problem.md) for why the app exists.
 - Before you change `WSLProxy.Relay/` or its tests, read [Docs/relay.md](Docs/relay.md).
+- Before you change `WSLProxy.App/` or `WSLProxy.UI/`, read [Docs/tray-ui.md](Docs/tray-ui.md).
 
 ## Conventions
 

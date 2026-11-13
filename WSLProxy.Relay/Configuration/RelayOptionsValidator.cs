@@ -13,6 +13,10 @@ internal sealed class RelayOptionsValidator : IValidateOptions<RelayOptions>
     {
         ArgumentNullException.ThrowIfNull(options);
         var failures = new List<string>();
+        if (options.ConfigurationError is not null)
+        {
+            return ValidateOptionsResult.Fail(options.ConfigurationError);
+        }
 
         // 0 means "any free port". It's for tests; the app never ships it.
         if (options.ListenPort is < 0 or > 65535)

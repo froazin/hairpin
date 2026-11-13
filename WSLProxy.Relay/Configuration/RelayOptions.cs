@@ -33,6 +33,12 @@ public sealed class RelayOptions
 
     /// <summary>Size and time limits that protect the relay from misbehaving peers.</summary>
     public RelayLimits Limits { get; set; } = new();
+
+    /// <summary>
+    /// Set when the configuration couldn't be bound, for example a port written as text. Validation then rejects these options,
+    /// so the relay keeps its last good settings instead of crashing. Never bound from configuration.
+    /// </summary>
+    public string? ConfigurationError { get; internal set; }
 }
 
 /// <summary>The upstream proxy that requests not matched by the bypass list go to.</summary>

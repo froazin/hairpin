@@ -76,6 +76,9 @@ internal static partial class Log
     [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "Ignoring bypass list entry '{Entry}': {Error}")]
     public static partial void BadNoProxyEntry(ILogger logger, string entry, string error);
 
+    [LoggerMessage(EventId = 7, Level = LogLevel.Warning, Message = "Ignored invalid settings: {Problems}")]
+    public static partial void InvalidSettings(ILogger logger, string problems);
+
     [LoggerMessage(EventId = 6, Level = LogLevel.Warning, Message = "Refused a connection: {Limit} connections are already open")]
     public static partial void TooManyConnections(ILogger logger, int limit);
 
