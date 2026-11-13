@@ -190,7 +190,7 @@ public static class HostNormaliser
 
         foreach (var c in label)
         {
-            if (!(c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-' or '_'))
+            if (c is not ((>= 'a' and <= 'z') or (>= '0' and <= '9') or '-' or '_'))
             {
                 return false;
             }

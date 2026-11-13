@@ -63,10 +63,10 @@ public sealed class ConfigChecker : IDisposable
             {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
             };
-            FileSystemEventHandler onChange = (_, _) => CheckSoon(TimeSpan.FromMilliseconds(500));
-            _watcher.Changed += onChange;
-            _watcher.Created += onChange;
-            _watcher.Deleted += onChange;
+            void OnChange(object sender, FileSystemEventArgs e) => CheckSoon(TimeSpan.FromMilliseconds(500));
+            _watcher.Changed += OnChange;
+            _watcher.Created += OnChange;
+            _watcher.Deleted += OnChange;
             _watcher.Renamed += (_, _) => CheckSoon(TimeSpan.FromMilliseconds(500));
             _watcher.EnableRaisingEvents = true;
         }

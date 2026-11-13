@@ -37,7 +37,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 - **Networking:** IPv4 only. The relay listens on `127.0.0.1` only, never on a wildcard address.
 - **Logging:** log `host:port`, the route, the status, byte counts and the duration. Never log paths, query strings, headers, bodies or credentials.
 - **Security:** treat every byte from a client or upstream as hostile. Parse strictly, enforce the size and time limits, and refuse what you don't understand.
-- Warnings are errors, and the recommended .NET analysers run on every build.
+- Warnings are errors, and the recommended .NET analysers run on every build, with the code style rules `.editorconfig` raises to warning. Files use LF line endings.
 
 ## Checks
 

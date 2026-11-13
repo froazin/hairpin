@@ -154,7 +154,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _onChange = _options.OnChange(o => ApplyOptions(o));
+        _onChange = _options.OnChange(ApplyOptions);
         ApplyOptions(_options.CurrentValue);
         var health = HealthLoopAsync(stoppingToken);
         try
@@ -294,7 +294,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
             var id = Interlocked.Increment(ref _sessionIds);
             var task = Task.Run(() => RunSessionAsync(client), CancellationToken.None);
             _sessions[id] = task;
-            _ = task.ContinueWith(_ => _sessions.TryRemove(id, out Task? _), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            _ = task.ContinueWith(_ => _sessions.TryRemove(id, out var _), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
             Publish(immediate: false);
         }
     }

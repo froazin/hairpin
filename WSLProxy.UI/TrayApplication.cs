@@ -18,21 +18,23 @@ namespace WSLProxy.UI;
 /// The tray app: a WPF application with no main window, a notification area icon, the flyout and the settings window.
 /// Create it and call <see cref="Run"/> on an STA thread.
 /// </summary>
-public sealed partial class TrayApplication : IDisposable
+public sealed partial class TrayApplication(IRelayStatus status, IRelayControl control, IRelayMetrics metrics, IOptionsMonitor<RelayOptions> relayOptions,
+    IOptionsMonitor<AppOptions> appOptions, UserSettingsStore store, StartupRegistration startup, LogStore logStore,
+    IDebugLogging debugLogging, ConfigChecker checker, string logDirectory, ILogger<TrayApplication> logger) : IDisposable
 {
-    private readonly IRelayStatus _status;
-    private readonly IRelayControl _control;
-    private readonly IOptionsMonitor<RelayOptions> _relayOptions;
-    private readonly IOptionsMonitor<AppOptions> _appOptions;
-    private readonly UserSettingsStore _store;
-    private readonly StartupRegistration _startup;
-    private readonly LogStore _logStore;
-    private readonly IDebugLogging _debugLogging;
-    private readonly ConfigChecker _checker;
-    private readonly IRelayMetrics _metrics;
+    private readonly IRelayStatus _status = status;
+    private readonly IRelayControl _control = control;
+    private readonly IOptionsMonitor<RelayOptions> _relayOptions = relayOptions;
+    private readonly IOptionsMonitor<AppOptions> _appOptions = appOptions;
+    private readonly UserSettingsStore _store = store;
+    private readonly StartupRegistration _startup = startup;
+    private readonly LogStore _logStore = logStore;
+    private readonly IDebugLogging _debugLogging = debugLogging;
+    private readonly ConfigChecker _checker = checker;
+    private readonly IRelayMetrics _metrics = metrics;
     private TrafficMonitor? _monitor;
-    private readonly string _logDirectory;
-    private readonly ILogger<TrayApplication> _logger;
+    private readonly string _logDirectory = logDirectory;
+    private readonly ILogger<TrayApplication> _logger = logger;
     private Application? _application;
     private TrayIcon? _tray;
     private FlyoutWindow? _flyout;
@@ -40,35 +42,13 @@ public sealed partial class TrayApplication : IDisposable
     private LogWindow? _logs;
     private IReadOnlyList<ConfigProblem> _problems = [];
 
-    /// <summary>Creates the tray app.</summary>
-    public TrayApplication(IRelayStatus status, IRelayControl control, IRelayMetrics metrics, IOptionsMonitor<RelayOptions> relayOptions,
-        IOptionsMonitor<AppOptions> appOptions, UserSettingsStore store, StartupRegistration startup, LogStore logStore,
-        IDebugLogging debugLogging, ConfigChecker checker, string logDirectory,
-        ILogger<TrayApplication> logger)
-    {
-        _status = status;
-        _control = control;
-        _metrics = metrics;
-        _relayOptions = relayOptions;
-        _appOptions = appOptions;
-        _store = store;
-        _startup = startup;
-        _logStore = logStore;
-        _debugLogging = debugLogging;
-        _checker = checker;
-        _logDirectory = logDirectory;
-        _logger = logger;
-    }
-
     /// <summary>Runs the UI until the user quits. Returns the process exit code.</summary>
     public int Run()
     {
-        _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-
         // Follow Windows' light or dark app theme with the Fluent styles. ThemeMode is marked experimental (WPF0001) in .NET 10;
         // the documented fallback is to merge Themes/Fluent.xaml by hand if it changes.
 #pragma warning disable WPF0001
-        _application.ThemeMode = ThemeMode.System;
+        _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown, ThemeMode = ThemeMode.System };
 #pragma warning restore WPF0001
 
         _application.DispatcherUnhandledException += (_, e) =>

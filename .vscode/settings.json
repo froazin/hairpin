@@ -1,6 +1,6 @@
 {
   "dotnet.defaultSolution": "WSLProxy.slnx",
-  "files.eol": "\r\n",
+  "files.eol": "\n",
   "json.schemas": [
     {
       "fileMatch": [

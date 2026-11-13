@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
-using WSLProxy.UI.Interop;
 using static WSLProxy.UI.Interop.NativeMethods;
 
 namespace WSLProxy.UI.Tray;
@@ -32,7 +31,6 @@ public sealed class TrayIcon : IDisposable
     private bool _added;
     private bool _disposed;
     private bool _ignoreNextSelect;
-    private readonly IntPtr _handle;
 
     /// <summary>Creates the icon and adds it to the notification area.</summary>
     public TrayIcon()
@@ -45,7 +43,7 @@ public sealed class TrayIcon : IDisposable
 
         // A hidden top-level window: message-only windows don't get the TaskbarCreated or settings-change broadcasts.
         _window = new HwndSource(new HwndSourceParameters("WSLProxyRelayTray") { WindowStyle = unchecked((int)0x80000000), Width = 0, Height = 0 });
-        _handle = _window.Handle;
+        Handle = _window.Handle;
         _window.AddHook(WndProc);
         _taskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
         Refresh(force: true);
@@ -58,7 +56,7 @@ public sealed class TrayIcon : IDisposable
     public event EventHandler<Rect>? DoubleClicked;
 
     /// <summary>The window that owns the icon, for positioning and foreground handling.</summary>
-    public IntPtr Handle => _handle; // Kept from construction: WPF may destroy the window before Dispose runs.
+    public IntPtr Handle { get; } // Kept from construction: WPF may destroy the window before Dispose runs.
 
     /// <summary>Sets the tooltip. Windows limits it to 127 characters.</summary>
     public void SetTooltip(string text)
@@ -322,7 +320,7 @@ public static class IconFile
         }
 
         const int headerSize = 40;
-        var maskStride = ((size + 31) / 32) * 4;
+        var maskStride = (size + 31) / 32 * 4;
         var image = new byte[headerSize + pixels.Length + (maskStride * size)];
         var header = image.AsSpan(0, headerSize);
         BitConverter.TryWriteBytes(header[0..4], headerSize);

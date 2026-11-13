@@ -53,7 +53,7 @@ internal static class Connector
         timeoutCts.CancelAfter(timeout);
         var name = upstream.ToString();
         var hostName = upstream.Host;
-        IPAddress[] addresses = HostNormaliser.TryParseStrictIPv4(hostName, out var literal)
+        var addresses = HostNormaliser.TryParseStrictIPv4(hostName, out var literal)
             ? [literal]
             : await ResolveAsync(hostName, timeoutCts.Token, cancellationToken).ConfigureAwait(false);
         if (addresses.Length == 0)

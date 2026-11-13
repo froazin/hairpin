@@ -90,37 +90,27 @@ public static class DestinationPolicy
 }
 
 /// <summary>Combines the deny list, the bypass list and the upstream setting into one decision. Pure and thread-safe.</summary>
-public sealed class Router
+/// <param name="noProxy">The bypass list.</param>
+/// <param name="hasHttpUpstream">True when plain HTTP requests have an upstream proxy.</param>
+/// <param name="hasHttpsUpstream">True when CONNECT tunnels have an upstream proxy.</param>
+/// <param name="listenPort">The relay's own port, to refuse loops.</param>
+/// <param name="denyLocal">Whether local destinations are refused.</param>
+public sealed class Router(NoProxyList noProxy, bool hasHttpUpstream, bool hasHttpsUpstream, int listenPort, bool denyLocal)
 {
-    /// <summary>Creates a router.</summary>
-    /// <param name="noProxy">The bypass list.</param>
-    /// <param name="hasHttpUpstream">True when plain HTTP requests have an upstream proxy.</param>
-    /// <param name="hasHttpsUpstream">True when CONNECT tunnels have an upstream proxy.</param>
-    /// <param name="listenPort">The relay's own port, to refuse loops.</param>
-    /// <param name="denyLocal">Whether local destinations are refused.</param>
-    public Router(NoProxyList noProxy, bool hasHttpUpstream, bool hasHttpsUpstream, int listenPort, bool denyLocal)
-    {
-        NoProxy = noProxy;
-        HasHttpUpstream = hasHttpUpstream;
-        HasHttpsUpstream = hasHttpsUpstream;
-        ListenPort = listenPort;
-        DenyLocal = denyLocal;
-    }
-
     /// <summary>The bypass list.</summary>
-    public NoProxyList NoProxy { get; }
+    public NoProxyList NoProxy { get; } = noProxy;
 
     /// <summary>True when plain HTTP requests have an upstream proxy.</summary>
-    public bool HasHttpUpstream { get; }
+    public bool HasHttpUpstream { get; } = hasHttpUpstream;
 
     /// <summary>True when CONNECT tunnels have an upstream proxy.</summary>
-    public bool HasHttpsUpstream { get; }
+    public bool HasHttpsUpstream { get; } = hasHttpsUpstream;
 
     /// <summary>The relay's own port.</summary>
-    public int ListenPort { get; }
+    public int ListenPort { get; } = listenPort;
 
     /// <summary>Whether local destinations are refused.</summary>
-    public bool DenyLocal { get; }
+    public bool DenyLocal { get; } = denyLocal;
 
     /// <summary>
     /// Decides the route: <see cref="RouteKind.Deny"/> if <see cref="DestinationPolicy.IsDeniedHost"/> says so;

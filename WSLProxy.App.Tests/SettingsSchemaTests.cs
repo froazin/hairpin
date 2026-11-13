@@ -5,6 +5,7 @@ namespace WSLProxy.App.Tests;
 
 /// <summary>Keeps <c>appsettings.schema.json</c>, which gives editors completion and checks, in step with <c>appsettings.json</c>.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class SettingsSchemaTests
 {
     [TestMethod]

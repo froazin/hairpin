@@ -365,7 +365,7 @@ public sealed class HttpReader : IDisposable
 
         foreach (var b in rest[i..])
         {
-            if (!(b == '\t' || (b >= 0x20 && b <= 0x7E)))
+            if (b is not ((byte)'\t' or >= 0x20 and <= 0x7E))
             {
                 throw new HttpFramingException("A chunk extension contains a character that isn't allowed.");
             }

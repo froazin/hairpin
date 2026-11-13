@@ -4,6 +4,7 @@ namespace WSLProxy.UI.Tests;
 
 /// <summary>The tray glyph's theme choice, the badged icon image and the WSL setup snippet.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class TrayTests
 {
     [TestMethod]
@@ -22,9 +23,9 @@ public sealed class TrayTests
     {
         var lines = TrayApplication.WslSetup(3129).Split('\n');
 
-        CollectionAssert.Contains(lines, "export http_proxy=http://127.0.0.1:3129 https_proxy=http://127.0.0.1:3129");
-        CollectionAssert.Contains(lines, "export HTTP_PROXY=http://127.0.0.1:3129 HTTPS_PROXY=http://127.0.0.1:3129");
-        CollectionAssert.Contains(lines, "export no_proxy=localhost,127.0.0.1 NO_PROXY=localhost,127.0.0.1");
+        Assert.Contains("export http_proxy=http://127.0.0.1:3129 https_proxy=http://127.0.0.1:3129", lines);
+        Assert.Contains("export HTTP_PROXY=http://127.0.0.1:3129 HTTPS_PROXY=http://127.0.0.1:3129", lines);
+        Assert.Contains("export no_proxy=localhost,127.0.0.1 NO_PROXY=localhost,127.0.0.1", lines);
     }
 
     [TestMethod]

@@ -13,6 +13,7 @@ namespace WSLProxy.App.Tests;
 
 /// <summary>Setting aside a corrupt settings file, binding a saved one, what the loggers write and keep, and the debug logging switch.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class StartupAndLoggingTests
 {
     private string _directory = string.Empty;
@@ -41,7 +42,7 @@ public sealed class StartupAndLoggingTests
         Assert.AreEqual(content is not null && !setAside, File.Exists(path));
         if (renamed is not null)
         {
-            StringAssert.StartsWith(renamed, "settings.json.invalid-");
+            Assert.StartsWith("settings.json.invalid-", renamed);
             Assert.IsTrue(File.Exists(Path.Combine(_directory, renamed)));
         }
     }
@@ -95,7 +96,7 @@ public sealed class StartupAndLoggingTests
         Assert.IsFalse(File.Exists(old));
         var today = Path.Combine(_directory, "relay-" + DateTime.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".log");
         var line = File.ReadAllText(today).TrimEnd();
-        StringAssert.EndsWith(line, " WARN  RelayService: Upstream proxy.example.com failed [InvalidOperationException]");
+        Assert.EndsWith(" WARN  RelayService: Upstream proxy.example.com failed [InvalidOperationException]", line);
         Assert.DoesNotContain("secret", line);
     }
 

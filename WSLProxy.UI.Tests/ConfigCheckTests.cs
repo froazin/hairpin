@@ -4,6 +4,7 @@ namespace WSLProxy.UI.Tests;
 
 /// <summary>The checks for the settings that stop WSL using mirrored mode, read the way WSL reads them.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class ConfigCheckTests
 {
     [TestMethod]
@@ -54,7 +55,7 @@ public sealed class ConfigCheckTests
         else
         {
             Assert.IsNotNull(problem);
-            StringAssert.StartsWith(problem.Title, expected);
+            Assert.StartsWith(expected, problem.Title);
             Assert.IsFalse(string.IsNullOrWhiteSpace(problem.Fix));
         }
     }
