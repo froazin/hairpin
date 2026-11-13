@@ -2,7 +2,7 @@
 
 What CI's Claude code review flags on pull requests (PRs) in this repository, at what severity and what it skips. Rules for all work are in `CLAUDE.md`, and a change that breaks one of them is a finding. This file adds only what's specific to reviews.
 
-Judge the projects as what ships: `WSLProxyRelay.exe` runs at sign-in on machines in regulated environments, relays every proxied connection from WSL, and parses bytes from clients and servers it doesn't trust. Judge the tests, `build.ps1` and the workflows by whether they still check and release the app correctly, not by the standards of the app itself.
+Judge the projects as what ships: `Hairpin.exe` runs at sign-in on machines in regulated environments, relays every proxied connection from WSL, and parses bytes from clients and servers it doesn't trust. Judge the tests, `build.ps1` and the workflows by whether they still check and release the app correctly, not by the standards of the app itself.
 
 ## What Important means here
 

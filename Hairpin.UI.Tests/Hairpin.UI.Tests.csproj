@@ -1,0 +1,21 @@
+<Project Sdk="MSTest.Sdk">
+
+  <!-- High-value tests of the tray UI's logic, without WPF windows or Win32 calls. MSTest.Sdk's version is pinned in global.json. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Hairpin.UI.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- No telemetry, code coverage or TRX extensions: keep the test dependencies minimal. -->
+    <TestingExtensionsProfile>None</TestingExtensionsProfile>
+    <!-- Run tests through the signed dotnet host, not an unsigned apphost exe that Application Control (Smart App Control, WDAC) can block. -->
+    <UseAppHost>false</UseAppHost>
+    <!-- Test names describe behaviour, so underscores are fine. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hairpin.UI\Hairpin.UI.csproj" />
+  </ItemGroup>
+
+</Project>

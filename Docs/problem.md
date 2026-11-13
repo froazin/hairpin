@@ -1,6 +1,6 @@
 # The problem: WSL2 mirrored networking and endpoint network agents
 
-Why WSL Proxy Relay exists: how WSL2's mirrored networking mode breaks endpoint network agents such as Symantec WSS Agent, and why neither networking mode works on its own. It's for engineers and reviewers who need the background before changing the relay.
+Why Hairpin exists: how WSL2's mirrored networking mode breaks endpoint network agents such as Symantec WSS Agent, and why neither networking mode works on its own. It's for engineers and reviewers who need the background before changing the relay.
 
 ## Contents
 
@@ -105,7 +105,7 @@ So WSL can't reach the relay on a host where IPv6 is disabled with `DisabledComp
 
 ## How the relay helps
 
-WSL can still reach Windows on `127.0.0.1` in mirrored mode. WSL Proxy Relay listens there as an HTTP proxy and makes each connection from a Windows process, so the agent handles it like any other Windows app. See the [README](../README.md) for how it's built.
+WSL can still reach Windows on `127.0.0.1` in mirrored mode. Hairpin listens there as an HTTP proxy and makes each connection from a Windows process, so the agent handles it like any other Windows app. See the [README](../README.md) for how it's built.
 
 - **Without an upstream proxy**, the relay connects to each destination directly from Windows, and the agent intercepts it there. Try this first: an upstream proxy may not be needed at all.
 - **With an upstream proxy**, such as `ep.threatpulse.net:80`, requests go to it unless the bypass list matches. Broadcom says nothing sent to `ep.threatpulse.net` can be bypassed, so internal and VPN hosts must be in the relay's bypass list.

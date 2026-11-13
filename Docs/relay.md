@@ -1,6 +1,6 @@
 # Relay engine
 
-How the proxy engine in [WSLProxy.Relay/](../WSLProxy.Relay/) works: what it accepts, how it routes, how it frames messages, and the limits and security rules it enforces. It's for engineers changing the engine. Read [problem.md](problem.md) first for why it exists.
+How the proxy engine in [Hairpin.Engine/](../Hairpin.Engine/) works: what it accepts, how it routes, how it frames messages, and the limits and security rules it enforces. It's for engineers changing the engine. Read [problem.md](problem.md) first for why it exists.
 
 ## Contents
 
@@ -124,7 +124,7 @@ A change to the port rebinds the listener. Other changes apply to the next reque
 - Error bodies are fixed text written by the relay, never request data.
 - Logs carry the method, `host:port`, route, status, byte counts and duration. Never a path, query, header, body or credential. Exceptions from connections are logged by kind only.
 - `Proxy-Authorization` is never forwarded. The relay holds no credentials.
-- A request that already carries the relay's own `Via` value is refused, and an upstream that resolves to the relay's own port is refused, so the relay can't loop through itself.
+- A request that already carries the relay's own `Via` entry, one whose received-by is exactly `hairpin`, is refused, and an upstream that resolves to the relay's own port is refused, so the relay can't loop through itself.
 
 ## Shared machines
 

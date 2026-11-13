@@ -1,6 +1,6 @@
 # Releases
 
-How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases WSL Proxy Relay from `main`: when a release is made, how its version is worked out and the tag it creates. A release is only a tag, and users build the app from it, so this doc also covers the builds that `build.ps1` makes, including the signed MSIX bundle that `build.ps1 -Msix` builds. It's for engineers changing the workflow, [`GitVersion.yaml`](../GitVersion.yaml) or the MSIX build.
+How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases Hairpin from `main`: when a release is made, how its version is worked out and the tag it creates. A release is only a tag, and users build the app from it, so this doc also covers the builds that `build.ps1` makes, including the signed MSIX bundle that `build.ps1 -Msix` builds. It's for engineers changing the workflow, [`GitVersion.yaml`](../GitVersion.yaml) or the MSIX build.
 
 ## Contents
 
@@ -20,7 +20,7 @@ The workflow runs on every push to `main` that changes more than the docs or age
 
 ```mermaid
 flowchart LR
-    accTitle: The jobs that release WSL Proxy Relay
+    accTitle: The jobs that release Hairpin
     accDescr: A push to main starts the release workflow. Its ci job calls the CI workflow, which builds and tests the app and works out the version. When a release is due, the release job checks it's the newest run and tags the commit vX.Y.Z, with no GitHub release and no packages.
     push["Push to main"] -->|"not only docs"| ci["ci: calls ci.yml"]
     ci -->|"release not due"| stop["Nothing to release"]
@@ -63,8 +63,8 @@ Runs share the `release` concurrency group: a run waits for the one in progress,
 
 | Build | Zip | MSIX bundle | Size of a zip |
 | --- | --- | --- | --- |
-| Framework-dependent (recommended) | `WSLProxyRelay-X.Y.Z-<runtime>.zip` | `WSLProxyRelay-X.Y.Z.msixbundle` | Under 1 MB |
-| Self-contained | `WSLProxyRelay-X.Y.Z-<runtime>-self-contained.zip` | `WSLProxyRelay-X.Y.Z-self-contained.msixbundle` | About 60 MB |
+| Framework-dependent (recommended) | `Hairpin-X.Y.Z-<runtime>.zip` | `Hairpin-X.Y.Z.msixbundle` | Under 1 MB |
+| Self-contained | `Hairpin-X.Y.Z-<runtime>-self-contained.zip` | `Hairpin-X.Y.Z-self-contained.msixbundle` | About 60 MB |
 
 The framework-dependent build carries the app, not .NET. It runs on the .NET 10 Desktop Runtime (`Microsoft.WindowsDesktop.App`) installed on the machine, for the same architecture as the build: x64 for `win-x64`, Arm64 for `win-arm64`. Install it with `winget install Microsoft.DotNet.DesktopRuntime.10`, or from the .NET download page. Without it the app doesn't start, and .NET says which runtime it needs. The .NET SDK includes the runtime, so a machine with the SDK already has it.
 
@@ -86,9 +86,9 @@ Windows doesn't install an unsigned MSIX package and Intune doesn't deploy one, 
 
 - **Tools:** the Windows SDK's `makeappx.exe`, `makepri.exe` and `signtool.exe`. The script looks on the `PATH`, then in the newest Windows SDK for the machine's architecture.
 - **Certificate:** found by thumbprint, with any spaces removed, in `CurrentUser\My`, then `LocalMachine\My`. `signtool` only looks in the machine's store when it's told to, so the script passes `/sm` for a certificate it found there. It must have the code signing extended key usage (`1.3.6.1.5.5.7.3.3`) and its private key. Its subject becomes the package's publisher verbatim, because `signtool` refuses to sign a package whose publisher doesn't match the certificate exactly. `-PublisherDisplayName` sets the publisher name Windows shows, and defaults to the subject's common name (CN).
-- **Packing:** the script packs each build, framework-dependent and self-contained, on its own. For each runtime, after the publish and the binary signing, it copies the publish folder into `Artifacts/Msix/Staging/<runtime>/`, or `Staging/<runtime>-self-contained/` for the self-contained build, adds the logos and fills in [`Packaging/AppxManifest.xml`](../Packaging/AppxManifest.xml), escaping each value for XML. `makeappx pack` makes `Artifacts/Msix/Packages/<build>/WSLProxyRelay-<version>-<runtime>.msix`, with a `-self-contained` suffix for the self-contained build, where `<build>` is `framework-dependent` or `self-contained`.
-- **Logos:** the script draws every logo from `Assets/wslproxy-logo.svg` at its own size, so none is stretched: each of the three logos at 100%, 125%, 150%, 200% and 400% scale, and the small logo at 14 target sizes from 16 to 256 pixels, plain and unplated, which Start, search and the taskbar use. It draws only the SVG features the logo uses, and stops with an error if the SVG gains anything else. `makepri` indexes the logos into `resources.pri`, so the manifest names each logo once and Windows picks the file for the place and display scale.
-- **Bundling and signing:** for each build, `makeappx bundle` puts the `x64` and `arm64` packages from `Packages/<build>/` into one bundle: `Artifacts/WSLProxyRelay-<version>.msixbundle` for the framework-dependent build and `Artifacts/WSLProxyRelay-<version>-self-contained.msixbundle` for the self-contained one. Only the bundles are signed, with SHA-256 and the timestamp server, and `signtool verify /pa` checks each, unless the certificate is self-signed: then the script skips the check with a warning, because it needs a trusted root, and a test certificate shouldn't be made one. Package versions have four parts, so the packages and the bundle use `Major.Minor.Patch.0`.
+- **Packing:** the script packs each build, framework-dependent and self-contained, on its own. For each runtime, after the publish and the binary signing, it copies the publish folder into `Artifacts/Msix/Staging/<runtime>/`, or `Staging/<runtime>-self-contained/` for the self-contained build, adds the logos and fills in [`Packaging/AppxManifest.xml`](../Packaging/AppxManifest.xml), escaping each value for XML. `makeappx pack` makes `Artifacts/Msix/Packages/<build>/Hairpin-<version>-<runtime>.msix`, with a `-self-contained` suffix for the self-contained build, where `<build>` is `framework-dependent` or `self-contained`.
+- **Logos:** the script draws every logo from `Assets/hairpin-logo.svg` at its own size, so none is stretched: each of the three logos at 100%, 125%, 150%, 200% and 400% scale, and the small logo at 14 target sizes from 16 to 256 pixels, plain and unplated, which Start, search and the taskbar use. It draws only the SVG features the logo uses, and stops with an error if the SVG gains anything else. `makepri` indexes the logos into `resources.pri`, so the manifest names each logo once and Windows picks the file for the place and display scale.
+- **Bundling and signing:** for each build, `makeappx bundle` puts the `x64` and `arm64` packages from `Packages/<build>/` into one bundle: `Artifacts/Hairpin-<version>.msixbundle` for the framework-dependent build and `Artifacts/Hairpin-<version>-self-contained.msixbundle` for the self-contained one. Only the bundles are signed, with SHA-256 and the timestamp server, and `signtool verify /pa` checks each, unless the certificate is self-signed: then the script skips the check with a warning, because it needs a trusted root, and a test certificate shouldn't be made one. Package versions have four parts, so the packages and the bundle use `Major.Minor.Patch.0`.
 - **Output:** the two bundles replace the zips, and `SHA256SUMS.txt` lists only the bundles.
 
 The package is a full-trust desktop app (`runFullTrust`, `packagedClassicApp` at medium integrity) for Windows 11 22H2 (10.0.22621) or later, the oldest Windows that supports WSL's mirrored networking. Windows adds it to the Start menu and the user uninstalls it from Settings like any other app. It starts at sign-in through a startup task rather than the `Run` key, and keeps its settings and logs in the package's `LocalState` folder. [Start at sign-in](tray-ui.md#start-at-sign-in) and [Settings files](tray-ui.md#settings-files) in tray-ui.md describe them.
