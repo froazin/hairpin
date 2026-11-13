@@ -211,7 +211,9 @@ internal sealed class ClientSession : IAsyncDisposable
             new Tunnel.Side(_client, _clientStream, _clientReader),
             new Tunnel.Side(server.Socket, server.Stream, server.Reader),
             runtime.TunnelIdleTimeout,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            _host.Traffic.AddUp,
+            _host.Traffic.AddDown).ConfigureAwait(false);
         LogRequest(request, decision, status, up, down, started);
     }
 
@@ -275,7 +277,7 @@ internal sealed class ClientSession : IAsyncDisposable
             {
                 await DropServerAsync().ConfigureAwait(false);
                 await RefuseAsync(outcome.ErrorStatus, decision.Reason, outcome.ErrorDetail, cancellationToken).ConfigureAwait(false);
-                LogRequest(request, decision, outcome.ErrorStatus, outcome.RequestBytes, 0, started);
+                LogRequest(request, decision, outcome.ErrorStatus, outcome.RequestBytes, 0, started, CountAs.AlreadyCounted);
                 return false;
             }
 
@@ -284,7 +286,8 @@ internal sealed class ClientSession : IAsyncDisposable
                 await DropServerAsync().ConfigureAwait(false);
             }
 
-            LogRequest(request, decision, outcome.Status, outcome.RequestBytes, outcome.ResponseBytes, started);
+            LogRequest(request, decision, outcome.Status, outcome.RequestBytes, outcome.ResponseBytes, started,
+                outcome.BrokeOff ? CountAs.Error : CountAs.Completed);
             return !outcome.CloseClient;
         }
     }
@@ -304,6 +307,9 @@ internal sealed class ClientSession : IAsyncDisposable
     {
         public static ExchangeOutcome Failed(int status, string detail, long requestBytes, bool closedEarly = false) =>
             new(true, closedEarly, status, detail, status, true, true, requestBytes, 0);
+
+        /// <summary>True when the response broke off after its head reached the client.</summary>
+        public bool BrokeOff { get; init; }
     }
 
     private async Task<ExchangeOutcome> ExchangeAsync(RelayRuntime runtime, RequestHead request, BodyFraming requestFraming, bool clientWantsClose,
@@ -313,7 +319,7 @@ internal sealed class ClientSession : IAsyncDisposable
 
         // The wait for the response head restarts whenever request body bytes go out, so a long upload isn't cut off.
         using var headIdle = new IdleTimer(runtime.IdleTimeout, exchangeCts.Token);
-        var requestBody = new ActivityStream(server.Stream, headIdle.Touch);
+        var requestBody = new ActivityStream(server.Stream, headIdle.Touch, _host.Traffic.AddUp);
         var bodyFailed = false;
         var bodyTask = requestFraming.Kind == BodyKind.None ? Task.CompletedTask : CopyRequestBodyAsync();
 
@@ -395,7 +401,7 @@ internal sealed class ClientSession : IAsyncDisposable
         {
             // Once a final head has gone to the client the only safe answer is to close everything; before that, send a 502.
             return responseStarted
-                ? new ExchangeOutcome(false, false, 0, null, 502, true, true, requestBody.BytesWritten, 0)
+                ? new ExchangeOutcome(false, false, 0, null, 502, true, true, requestBody.BytesWritten, 0) { BrokeOff = true }
                 : ExchangeOutcome.Failed(502, "The connection to the server failed.", requestBody.BytesWritten);
         }
         finally
@@ -442,10 +448,10 @@ internal sealed class ClientSession : IAsyncDisposable
     }
 
     /// <summary>Copies a body with an idle timeout that resets on every write. A stall surfaces as an <see cref="IOException"/>.</summary>
-    private static async Task<long> CopyWithIdleAsync(HttpReader from, BodyFraming framing, Stream to, RelayRuntime runtime, CancellationToken cancellationToken)
+    private async Task<long> CopyWithIdleAsync(HttpReader from, BodyFraming framing, Stream to, RelayRuntime runtime, CancellationToken cancellationToken)
     {
         using var idle = new IdleTimer(runtime.IdleTimeout, cancellationToken);
-        var destination = new ActivityStream(to, idle.Touch);
+        var destination = new ActivityStream(to, idle.Touch, _host.Traffic.AddDown);
         try
         {
             await from.CopyBodyAsync(framing, destination, runtime.Limits.MaxHeaderBytes, idle.Token).ConfigureAwait(false);
@@ -508,6 +514,7 @@ internal sealed class ClientSession : IAsyncDisposable
     private async Task RefuseAsync(int status, string reason, string? detail, CancellationToken cancellationToken)
     {
         Log.Refused(Logger, status, reason);
+        _host.Traffic.Error();
         try
         {
             await _clientStream.WriteAsync(HeadWriter.BuildError(status, detail), cancellationToken).ConfigureAwait(false);
@@ -518,8 +525,30 @@ internal sealed class ClientSession : IAsyncDisposable
         }
     }
 
-    private void LogRequest(RequestHead request, RouteDecision decision, int status, long up, long down, long started)
+    /// <summary>How a logged request counts in the traffic totals.</summary>
+    private enum CountAs
     {
+        /// <summary>A response reached the client: counts on its route.</summary>
+        Completed,
+
+        /// <summary>The response broke off part way: counts as an error.</summary>
+        Error,
+
+        /// <summary><see cref="RefuseAsync"/> already counted it as an error.</summary>
+        AlreadyCounted,
+    }
+
+    private void LogRequest(RequestHead request, RouteDecision decision, int status, long up, long down, long started, CountAs countAs = CountAs.Completed)
+    {
+        if (countAs == CountAs.Completed)
+        {
+            _host.Traffic.Completed(decision.Kind);
+        }
+        else if (countAs == CountAs.Error)
+        {
+            _host.Traffic.Error();
+        }
+
         if (Logger.IsEnabled(LogLevel.Information))
         {
             var elapsed = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;

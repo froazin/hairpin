@@ -55,14 +55,11 @@
                     <Grid.RowDefinitions>
                         <RowDefinition />
                         <RowDefinition />
-                        <RowDefinition />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="Proxy" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     <TextBlock Grid.Row="0" Grid.Column="1" x:Name="EndpointText" Margin="0,2" FontFamily="Cascadia Mono, Consolas" FontSize="12" />
                     <TextBlock Grid.Row="1" Text="Upstream" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     <TextBlock Grid.Row="1" Grid.Column="1" x:Name="UpstreamText" Margin="0,2" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextBlockStyle}" />
-                    <TextBlock Grid.Row="2" Text="Traffic" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="TrafficText" Margin="0,2" Style="{DynamicResource CaptionTextBlockStyle}" />
                 </Grid>
 
                 <Border x:Name="ErrorPanel" Margin="0,10,0,0" Padding="10,8" CornerRadius="4" Visibility="Collapsed"
@@ -91,6 +88,70 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Traffic: rates, a chart of the last two minutes and totals. -->
+        <Border Margin="12,0,12,8" Padding="14,12" CornerRadius="8"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+            <StackPanel>
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Text="Last 2 minutes" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                    <TextBlock Text="Traffic" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                </DockPanel>
+
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="10" Height="3" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <TextBlock Text="Down" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                        </StackPanel>
+                        <TextBlock x:Name="DownRateText" FontSize="16" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="10" Height="3" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <TextBlock Text="Up" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                        </StackPanel>
+                        <TextBlock x:Name="UpRateText" FontSize="16" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                    </StackPanel>
+                </Grid>
+
+                <Canvas x:Name="Chart" Height="44" Margin="0,8,0,0" ClipToBounds="True" SizeChanged="OnChartSizeChanged"
+                        AutomationProperties.Name="Chart of traffic down and up over the last two minutes">
+                    <Polygon x:Name="DownArea" Fill="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0.18" />
+                    <Polyline x:Name="DownLine" Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="1.5" StrokeLineJoin="Round" />
+                    <Polyline x:Name="UpLine" Stroke="{DynamicResource TextFillColorSecondaryBrush}" StrokeThickness="1.25" StrokeLineJoin="Round" />
+                </Canvas>
+                <Border Height="1" Background="{DynamicResource CardStrokeColorDefaultBrush}" />
+
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock x:Name="OpenText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="Open" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock x:Name="RequestsText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="Requests/min" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock x:Name="ErrorsText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="Errors" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="TotalsText" Margin="0,8,0,0" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+            </StackPanel>
+        </Border>
 
         <!-- Actions. -->
         <Button x:Name="PauseButton" Style="{StaticResource RowButton}" Click="OnPauseClick" AutomationProperties.Name="Pause or resume the relay">

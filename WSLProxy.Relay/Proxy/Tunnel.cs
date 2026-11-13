@@ -13,14 +13,15 @@ internal static class Tunnel
     public readonly record struct Side(Socket Socket, Stream Stream, HttpReader Reader);
 
     /// <summary>Runs the tunnel. Returns the bytes sent from <paramref name="a"/> to <paramref name="b"/> and back.</summary>
-    public static async Task<(long AToB, long BToA)> RunAsync(Side a, Side b, TimeSpan idleTimeout, CancellationToken cancellationToken)
+    public static async Task<(long AToB, long BToA)> RunAsync(Side a, Side b, TimeSpan idleTimeout, CancellationToken cancellationToken,
+        Action<int>? onAToB = null, Action<int>? onBToA = null)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var lastActivity = Stopwatch.GetTimestamp();
         void Touch() => Interlocked.Exchange(ref lastActivity, Stopwatch.GetTimestamp());
 
-        var toB = new ActivityStream(b.Stream, Touch);
-        var toA = new ActivityStream(a.Stream, Touch);
+        var toB = new ActivityStream(b.Stream, Touch, onAToB);
+        var toA = new ActivityStream(a.Stream, Touch, onBToA);
         var pumpAToB = PumpAsync(a.Reader, toB, b.Socket, cts.Token);
         var pumpBToA = PumpAsync(b.Reader, toA, a.Socket, cts.Token);
         var watchdog = WatchdogAsync(() => Interlocked.Read(ref lastActivity), idleTimeout, cts);

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using WSLProxy.Relay.Status;
 using WSLProxy.UI.Diagnostics;
@@ -18,6 +19,10 @@ public partial class FlyoutWindow : Window
     private DateTime _hiddenAt = DateTime.MinValue;
     private Rect? _anchor;
     private RelayState _state;
+    private TrafficSummary? _traffic;
+
+    /// <summary>How many points the chart shows: two minutes at one a second.</summary>
+    public const int ChartPoints = 120;
 
     /// <summary>Creates the flyout. It starts hidden.</summary>
     public FlyoutWindow()
@@ -143,7 +148,6 @@ public partial class FlyoutWindow : Window
                 UpstreamHealth.Unreachable => "unreachable",
                 _ => "checking",
             };
-        TrafficText.Text = string.Format(CultureInfo.CurrentCulture, "{0:N0} open · {1:N0} requests", snapshot.ActiveConnections, snapshot.TotalRequests);
 
         ErrorPanel.Visibility = string.IsNullOrEmpty(snapshot.LastError) ? Visibility.Collapsed : Visibility.Visible;
         ErrorText.Text = snapshot.LastError ?? string.Empty;
@@ -151,6 +155,26 @@ public partial class FlyoutWindow : Window
         var paused = snapshot.State == RelayState.Paused;
         PauseText.Text = paused ? "Resume" : "Pause";
         PauseGlyph.Text = ((char)(paused ? 0xE768 : 0xE769)).ToString(); // Segoe Fluent Icons: Play, Pause.
+    }
+
+    /// <summary>Shows the traffic rates, chart and totals.</summary>
+    public void UpdateTraffic(TrafficSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+        _traffic = summary;
+        DownRateText.Text = ByteFormat.Rate(summary.DownPerSecond);
+        UpRateText.Text = ByteFormat.Rate(summary.UpPerSecond);
+        RequestsText.Text = summary.RequestsLastMinute.ToString("N0", CultureInfo.CurrentCulture);
+        var latest = summary.Latest;
+        OpenText.Text = (latest?.ActiveConnections ?? 0).ToString("N0", CultureInfo.CurrentCulture);
+        ErrorsText.Text = (latest?.Errors ?? 0).ToString("N0", CultureInfo.CurrentCulture);
+        var routed = (latest?.DirectRequests ?? 0) + (latest?.UpstreamRequests ?? 0);
+        TotalsText.Text = latest is null
+            ? "No traffic yet."
+            : string.Format(CultureInfo.CurrentCulture, "Since start: {0} down, {1} up, {2:N0} requests{3}.",
+                ByteFormat.Size(latest.BytesDown), ByteFormat.Size(latest.BytesUp), latest.Requests,
+                routed == 0 ? string.Empty : string.Format(CultureInfo.CurrentCulture, ", {0:P0} direct", (double)latest.DirectRequests / routed));
+        DrawChart();
     }
 
     /// <summary>Shows the settings that stop mirrored mode, or hides the list when there are none.</summary>
@@ -170,6 +194,44 @@ public partial class FlyoutWindow : Window
         CopyText.Text = "Copied";
         _copiedTimer.Stop();
         _copiedTimer.Start();
+    }
+
+    private void OnChartSizeChanged(object sender, SizeChangedEventArgs e) => DrawChart();
+
+    /// <summary>Draws the chart right-aligned, newest point at the right edge, scaled to the busiest point shown.</summary>
+    private void DrawChart()
+    {
+        var width = Chart.ActualWidth;
+        var height = Chart.ActualHeight;
+        var down = _traffic?.Down ?? [];
+        var up = _traffic?.Up ?? [];
+        DownLine.Points = [];
+        UpLine.Points = [];
+        DownArea.Points = [];
+        if (width <= 0 || height <= 0 || down.Count < 2)
+        {
+            return;
+        }
+
+        // At least 1 KB/s full scale, so an idle relay draws a flat line rather than noise.
+        var top = Math.Max(1024, Math.Max(down.Max(), up.Max())) * 1.1;
+        var step = width / (ChartPoints - 1);
+        PointCollection Line(IReadOnlyList<double> values)
+        {
+            var points = new PointCollection(values.Count);
+            for (var i = 0; i < values.Count; i++)
+            {
+                points.Add(new Point(width - ((values.Count - 1 - i) * step), height - (values[i] / top * height)));
+            }
+
+            return points;
+        }
+
+        var downPoints = Line(down);
+        DownLine.Points = downPoints;
+        UpLine.Points = Line(up);
+        var area = new PointCollection(downPoints) { new Point(width, height), new Point(downPoints[0].X, height) };
+        DownArea.Points = area;
     }
 
     private void HideFlyout()

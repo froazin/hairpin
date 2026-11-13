@@ -29,6 +29,8 @@ public sealed partial class TrayApplication : IDisposable
     private readonly LogStore _logStore;
     private readonly IDebugLogging _debugLogging;
     private readonly ConfigChecker _checker;
+    private readonly IRelayMetrics _metrics;
+    private TrafficMonitor? _monitor;
     private readonly string _logDirectory;
     private readonly ILogger<TrayApplication> _logger;
     private Application? _application;
@@ -39,13 +41,14 @@ public sealed partial class TrayApplication : IDisposable
     private IReadOnlyList<ConfigProblem> _problems = [];
 
     /// <summary>Creates the tray app.</summary>
-    public TrayApplication(IRelayStatus status, IRelayControl control, IOptionsMonitor<RelayOptions> relayOptions,
+    public TrayApplication(IRelayStatus status, IRelayControl control, IRelayMetrics metrics, IOptionsMonitor<RelayOptions> relayOptions,
         IOptionsMonitor<AppOptions> appOptions, UserSettingsStore store, StartupRegistration startup, LogStore logStore,
         IDebugLogging debugLogging, ConfigChecker checker, string logDirectory,
         ILogger<TrayApplication> logger)
     {
         _status = status;
         _control = control;
+        _metrics = metrics;
         _relayOptions = relayOptions;
         _appOptions = appOptions;
         _store = store;
@@ -98,11 +101,13 @@ public sealed partial class TrayApplication : IDisposable
         _tray.Activated += (_, anchor) =>
         {
             _checker.CheckSoon(TimeSpan.Zero);
+            ShowTraffic();
             _flyout.Toggle(anchor);
         };
         _tray.DoubleClicked += (_, anchor) =>
         {
             _checker.CheckSoon(TimeSpan.Zero);
+            ShowTraffic();
             _flyout.Open(anchor);
         };
 
@@ -113,6 +118,8 @@ public sealed partial class TrayApplication : IDisposable
         Apply(_status.Current);
         _checker.Changed += OnConfigChanged;
         _checker.Start();
+        _monitor = new TrafficMonitor(_metrics);
+        _monitor.Sampled += OnTrafficSampled;
         try
         {
             return _application.Run();
@@ -121,6 +128,8 @@ public sealed partial class TrayApplication : IDisposable
         {
             _status.Changed -= OnStatusChanged;
             _checker.Changed -= OnConfigChanged;
+            _monitor.Sampled -= OnTrafficSampled;
+            _monitor.Dispose();
             _tray.Dispose();
             _flyout.Close();
         }
@@ -162,6 +171,24 @@ public sealed partial class TrayApplication : IDisposable
             _ => " · " + _problems.Count.ToString(CultureInfo.InvariantCulture) + " settings need fixing",
         };
         _tray?.SetTooltip("WSL Proxy Relay: " + state + problems);
+    }
+
+    // Raised on a thread-pool thread once a second. Redraw only while the flyout is open.
+    private void OnTrafficSampled(object? sender, EventArgs e) =>
+        _application?.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            if (_flyout?.IsVisible == true)
+            {
+                ShowTraffic();
+            }
+        });
+
+    private void ShowTraffic()
+    {
+        if (_monitor is not null)
+        {
+            _flyout?.UpdateTraffic(_monitor.Summary(FlyoutWindow.ChartPoints));
+        }
     }
 
     // Raised on a thread-pool thread. Log here, then update the UI on its own thread.

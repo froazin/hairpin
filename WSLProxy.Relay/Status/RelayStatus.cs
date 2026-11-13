@@ -74,3 +74,27 @@ public interface IRelayControl
     /// <summary>Binds the listening port again.</summary>
     Task ResumeAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>Traffic totals since the relay started, for the metrics panel. Every value only grows, apart from the open connections.</summary>
+/// <param name="Requests">Requests handled, CONNECT tunnels included.</param>
+/// <param name="DirectRequests">Requests whose response reached the client on the direct route.</param>
+/// <param name="UpstreamRequests">Requests whose response reached the client through the upstream proxy.</param>
+/// <param name="Errors">Requests the relay answered with its own error, such as a refusal, a failed connection or a timeout, or whose response broke off part way.</param>
+/// <param name="BytesUp">Bytes sent towards servers: request bodies and tunnel data, not message heads.</param>
+/// <param name="BytesDown">Bytes sent back to clients: response bodies and tunnel data, not message heads.</param>
+/// <param name="ActiveConnections">Client connections open now.</param>
+public sealed record RelayCounters(
+    long Requests,
+    long DirectRequests,
+    long UpstreamRequests,
+    long Errors,
+    long BytesUp,
+    long BytesDown,
+    int ActiveConnections);
+
+/// <summary>Reads the relay's traffic totals. Cheap and lock-free, so the UI can poll it every second.</summary>
+public interface IRelayMetrics
+{
+    /// <summary>The totals now.</summary>
+    RelayCounters Read();
+}

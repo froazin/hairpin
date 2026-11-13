@@ -16,7 +16,7 @@ namespace WSLProxy.Relay.Proxy;
 /// The relay: owns the listening socket on 127.0.0.1, accepts client connections and runs a <see cref="ClientSession"/> for each.
 /// Applies option changes live, probes the upstream proxy, and publishes its state for the UI.
 /// </summary>
-public sealed partial class RelayService : BackgroundService, IRelayStatus, IRelayControl, ISessionHost
+public sealed partial class RelayService : BackgroundService, IRelayStatus, IRelayControl, IRelayMetrics, ISessionHost
 {
     private static readonly TimeSpan BindRetryDelay = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan SessionDrainTimeout = TimeSpan.FromSeconds(2);
@@ -40,6 +40,7 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
     private int _boundPort;
     private int _active;
     private string? _appliedFingerprint;
+    private readonly TrafficCounters _traffic = new();
     private long _total;
     private long _sessionIds;
     private int _publishScheduled;
@@ -94,6 +95,11 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
     }
 
     void ISessionHost.OnUpstreamResult(bool reachable) => SetUpstreamHealth(reachable ? UpstreamHealth.Reachable : UpstreamHealth.Unreachable);
+
+    TrafficCounters ISessionHost.Traffic => _traffic;
+
+    /// <inheritdoc />
+    public RelayCounters Read() => _traffic.Read(Interlocked.Read(ref _total), Volatile.Read(ref _active));
 
     /// <inheritdoc />
     public Task PauseAsync(CancellationToken cancellationToken = default)
