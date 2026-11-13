@@ -13,14 +13,13 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths:
-      - "**"
-      - "!*.md"
-      - "!.claude/**"
-      - "!.github/dependabot.yml"
-      - "!.vscode/**"
-      - "!Docs/**"
-      - "!LICENSE"
+    paths-ignore:
+      - "*.md"
+      - ".claude/**"
+      - ".github/dependabot.yml"
+      - ".vscode/**"
+      - "Docs/**"
+      - "LICENSE"
   workflow_call:
     outputs:
       version:

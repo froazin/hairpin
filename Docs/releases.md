@@ -14,7 +14,7 @@ How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases
 
 ## Overview
 
-The workflow runs on every push to `main` that changes more than the docs or agent settings, the same `paths` list as [CI](ci.md). This flowchart shows the jobs:
+The workflow runs on every push to `main` that changes more than the docs or agent settings, the same `paths-ignore` list as [CI](ci.md). This flowchart shows the jobs:
 
 ```mermaid
 flowchart LR

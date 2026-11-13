@@ -18,7 +18,7 @@ Mark a finding Important only when the change would do one of these:
 - Add a NuGet package that Microsoft doesn't publish, set a package version outside `Directory.Packages.props`, leave a `packages.lock.json` out of step, or weaken `nuget.config`'s sources, signature validation or trusted signers.
 - Make `build.ps1` fail in Windows PowerShell 5.1, or change what it publishes or hashes without updating `Docs/releases.md`.
 - Make a design doc, the README, `CLAUDE.md`, `CONTRIBUTING.md` or this file say something about the code that's false after the change, so that someone following it would do the wrong thing.
-- Make CI or the release workflow skip a check the change needs, such as a `!` pattern in `paths` that skips a path the build reads, or let a job run when one it needs failed. `Docs/ci.md` and `Docs/releases.md` describe how they should work.
+- Make CI or the release workflow skip a check the change needs, such as a `paths-ignore` entry that skips a path the build reads, or let a job run when one it needs failed. `Docs/ci.md` and `Docs/releases.md` describe how they should work.
 - Give a job other than `release` in `release.yml` a token that can write, other than the permissions its `ci` job allows for CI's code review, or let the `release` job check out or run the repository's code, or publish anything the CI build didn't make.
 - Widen what the Claude run in CI can do, such as its `permissions`, its `github_token`, its `--allowedTools` or its `--disallowedTools`, past what the "Security" section of `Docs/ci.md` allows, even when the change updates that doc too. Give `CLAUDE_CODE_OAUTH_TOKEN`, or a token that can write, to a step that runs the PR's code, or pass secrets to `ci.yml` from the release workflow.
 - Use an action without pinning it to a full commit SHA with its version in a comment, pin one to a release less than 7 days old, or shorten the 7-day Dependabot cooldown.
@@ -62,7 +62,7 @@ These are the rules that no compiler, analyser or test enforces.
 ### Docs and CI
 
 - A change to what a component does updates its design doc in `Docs/` in the same PR.
-- A new path the build reads isn't skipped by a `!` pattern in `paths` in `ci.yml` and `release.yml`, and the two lists stay the same.
+- A new path the build reads isn't skipped by `paths-ignore` in `ci.yml` and `release.yml`, and the two lists stay the same.
 - A change to this file's severities, its Nit cap or what it says about pre-existing issues also changes the code review's prompt in `.github/workflows/ci.yml`, and the other way round.
 
 ## Evidence

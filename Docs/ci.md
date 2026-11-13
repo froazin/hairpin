@@ -15,7 +15,7 @@ How [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) builds, tests and 
 
 ## Overview
 
-The workflow runs when a PR to `main` is opened, pushed to, reopened or marked ready for review, and when the [release workflow](releases.md) calls it with `workflow_call` on a push to `main`. The `paths` filter skips a change only to the docs or agent settings: root Markdown files, `Docs/`, `.claude/`, `.vscode/`, `.github/dependabot.yml` and `LICENSE`. This flowchart shows the jobs:
+The workflow runs when a PR to `main` is opened, pushed to, reopened or marked ready for review, and when the [release workflow](releases.md) calls it with `workflow_call` on a push to `main`. The `paths-ignore` filter skips a change only to the docs or agent settings: root Markdown files, `Docs/`, `.claude/`, `.vscode/`, `.github/dependabot.yml` and `LICENSE`. This flowchart shows the jobs:
 
 ```mermaid
 flowchart LR
@@ -75,7 +75,7 @@ The `code-review` job asks Claude Sonnet 5.5 to review the lines the PR adds or 
 - **`build.ps1`, not separate steps.** CI and a local build run the same script, so they can't drift apart.
 - **The code review after the build.** No tokens go on code that doesn't build or pass its tests.
 - **The same review as the maintainer's other repositories,** with a prompt and `REVIEW.md` for this one.
-- **A paths filter rather than a check of the change.** A docs-only change can't break the build, so it doesn't run the build or the review.
+- **A `paths-ignore` filter rather than a check of the change.** A docs-only change can't break the build, so it doesn't run the build or the review.
 
 ## Limits
 

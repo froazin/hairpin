@@ -8,14 +8,13 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "**"
-      - "!*.md"
-      - "!.claude/**"
-      - "!.github/dependabot.yml"
-      - "!.vscode/**"
-      - "!Docs/**"
-      - "!LICENSE"
+    paths-ignore:
+      - "*.md"
+      - ".claude/**"
+      - ".github/dependabot.yml"
+      - ".vscode/**"
+      - "Docs/**"
+      - "LICENSE"
 
 permissions:
   contents: read
