@@ -137,7 +137,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock x:Name="OpenText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="Open" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                        <TextBlock Text="Conn" ToolTip="Client connections open now" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                         <TextBlock x:Name="RequestsText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
