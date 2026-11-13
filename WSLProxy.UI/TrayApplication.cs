@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WSLProxy.Relay.Configuration;
 using WSLProxy.Relay.Status;
+using WSLProxy.UI.Diagnostics;
 using WSLProxy.UI.Settings;
 using WSLProxy.UI.Tray;
 using WSLProxy.UI.Views;
@@ -25,16 +26,20 @@ public sealed partial class TrayApplication : IDisposable
     private readonly IOptionsMonitor<AppOptions> _appOptions;
     private readonly UserSettingsStore _store;
     private readonly StartupRegistration _startup;
+    private readonly LogStore _logStore;
+    private readonly IDebugLogging _debugLogging;
     private readonly string _logDirectory;
     private readonly ILogger<TrayApplication> _logger;
     private Application? _application;
     private TrayIcon? _tray;
     private FlyoutWindow? _flyout;
     private SettingsWindow? _settings;
+    private LogWindow? _logs;
 
     /// <summary>Creates the tray app.</summary>
     public TrayApplication(IRelayStatus status, IRelayControl control, IOptionsMonitor<RelayOptions> relayOptions,
-        IOptionsMonitor<AppOptions> appOptions, UserSettingsStore store, StartupRegistration startup, string logDirectory,
+        IOptionsMonitor<AppOptions> appOptions, UserSettingsStore store, StartupRegistration startup, LogStore logStore,
+        IDebugLogging debugLogging, string logDirectory,
         ILogger<TrayApplication> logger)
     {
         _status = status;
@@ -43,6 +48,8 @@ public sealed partial class TrayApplication : IDisposable
         _appOptions = appOptions;
         _store = store;
         _startup = startup;
+        _logStore = logStore;
+        _debugLogging = debugLogging;
         _logDirectory = logDirectory;
         _logger = logger;
     }
@@ -79,7 +86,9 @@ public sealed partial class TrayApplication : IDisposable
         };
         _flyout.CopyRequested += (_, _) => CopyWslSetup();
         _flyout.SettingsRequested += (_, _) => ShowSettings();
-        _flyout.LogsRequested += (_, _) => OpenLogs();
+        _flyout.LogsRequested += (_, _) => ShowLogs();
+        _flyout.DebugLoggingRequested += (_, enabled) => SetDebugLogging(enabled);
+        _flyout.SetDebugLogging(_debugLogging.IsEnabled);
         _flyout.QuitRequested += (_, _) => _application.Shutdown();
 
         _tray = new TrayIcon();
@@ -180,11 +189,35 @@ public sealed partial class TrayApplication : IDisposable
         return problems;
     }
 
+    private void ShowLogs()
+    {
+        if (_logs is not null)
+        {
+            _logs.Activate();
+            return;
+        }
+
+        _logs = new LogWindow(_logStore, OpenLogs);
+        _logs.Closed += (_, _) => _logs = null;
+        _logs.Show();
+        _logs.Activate();
+    }
+
+    private void SetDebugLogging(bool enabled)
+    {
+        _debugLogging.SetEnabled(enabled);
+        _flyout?.SetDebugLogging(_debugLogging.IsEnabled);
+        LogDebugLogging(_logger, enabled ? "on" : "off");
+    }
+
     private void OpenLogs()
     {
         Directory.CreateDirectory(_logDirectory);
         using var _ = Process.Start(new ProcessStartInfo { FileName = _logDirectory, UseShellExecute = true });
     }
+
+    [LoggerMessage(EventId = 101, Level = LogLevel.Information, Message = "Debug logging turned {State} until the app restarts")]
+    private static partial void LogDebugLogging(ILogger logger, string state);
 
     [LoggerMessage(EventId = 100, Level = LogLevel.Error, Message = "Unexpected UI error: {ExceptionType}")]
     private static partial void LogUiError(ILogger logger, string exceptionType);

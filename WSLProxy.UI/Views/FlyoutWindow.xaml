@@ -91,11 +91,20 @@
                 <TextBlock Text="Settings and bypass list" VerticalAlignment="Center" />
             </StackPanel>
         </Button>
-        <Button Style="{StaticResource RowButton}" Click="OnLogsClick" AutomationProperties.Name="Open the log folder">
+        <Button Style="{StaticResource RowButton}" Click="OnLogsClick" AutomationProperties.Name="Show the recent log lines">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Style="{StaticResource Glyph}" Text="&#xE838;" />
-                <TextBlock Text="Open logs" VerticalAlignment="Center" />
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" />
+                <TextBlock Text="Logs" VerticalAlignment="Center" />
             </StackPanel>
+        </Button>
+        <Button Style="{StaticResource RowButton}" HorizontalContentAlignment="Stretch" Click="OnDebugClick"
+                AutomationProperties.Name="Turn debug logging on or off until the app restarts">
+            <DockPanel>
+                <CheckBox x:Name="DebugBox" DockPanel.Dock="Right" IsHitTestVisible="False" Focusable="False" MinWidth="0"
+                          VerticalAlignment="Center" Margin="8,0,0,0" />
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xEBE8;" />
+                <TextBlock Text="Debug logging until restart" VerticalAlignment="Center" />
+            </DockPanel>
         </Button>
 
         <Separator Margin="12,4" />

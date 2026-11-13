@@ -35,8 +35,9 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 
 The UI uses WPF's Fluent theme with `ThemeMode.System`, so it follows Windows' light or dark app theme and accent colour. Colours and styles come only from Fluent resources, such as `CardBackgroundFillColorDefaultBrush` and `AccentButtonStyle`, never fixed values.
 
-- **Flyout** (`FlyoutWindow`): a left or right click on the icon opens it next to the icon. `CalculatePopupWindowPosition` places it in physical pixels, clear of the icon and inside the work area, wherever the taskbar is. It shows the state, endpoint, upstream health, traffic and any error, with Pause or Resume, Copy WSL setup, Settings, Open logs and Quit. The window moves to the icon's monitor before it's measured, so per-monitor DPI is right, and it re-places itself when its height changes. A double-click opens it rather than toggling it. It hides when it loses focus or on <kbd>Esc</kbd>.
-- **Settings window** (`SettingsWindow`): upstream host and port, the bypass list, the relay port, the local deny list and start at sign-in. Bypass entries are checked with `NoProxyRule.TryParse` as they're added, and a pasted `no_proxy` value is split into entries.
+- **Flyout** (`FlyoutWindow`): a left or right click on the icon opens it next to the icon. `CalculatePopupWindowPosition` places it in physical pixels, clear of the icon and inside the work area, wherever the taskbar is. It shows the state, endpoint, upstream health, traffic and any error, with Pause or Resume, Copy WSL setup, Settings, Logs, a debug logging switch and Quit. The window moves to the icon's monitor before it's measured, so per-monitor DPI is right, and it re-places itself when its height changes. A double-click opens it rather than toggling it. It hides when it loses focus or on <kbd>Esc</kbd>.
+- **Log window** (`LogWindow`): the recent log lines held in memory, live, with a lowest-level filter, a text filter, Copy, Clear and Open log folder. See [Logging](#logging).
+- **Settings window** (`SettingsWindow`): upstream host and port, the bypass list, the relay port, the local deny list and start at sign-in. `BypassEntries` checks each bypass entry with `NoProxyRule.TryParse` as it's added, and splits a pasted `no_proxy` value into entries.
 
 This diagram shows how saving reaches the relay:
 
@@ -82,7 +83,14 @@ A broken settings file never stops the app. At start-up, a file that isn't valid
 
 ## Logging
 
-`FileLoggerProvider` writes one file per day, `%LOCALAPPDATA%\WSLProxy\logs\relay-yyyyMMdd.log`, from a background queue so logging never blocks the relay. It keeps `App:LogRetentionDays` days (7 by default). Exceptions are logged by type only. Request lines carry `host:port` and status, which is a browsing history of sorts: keep the retention short.
+Every log line goes to two places, through `Microsoft.Extensions.Logging` providers that share `LogFormat`, so they say the same thing:
+
+- **Files:** `FileLoggerProvider` writes one file per day, `%LOCALAPPDATA%\WSLProxy\logs\relay-yyyyMMdd.log`, in UTC, from a background queue so logging never blocks the relay. It keeps `App:LogRetentionDays` days (7 by default).
+- **Memory:** `MemoryLoggerProvider` adds each line to `LogStore`, which the log window shows. `LogStore` is a `RingBuffer` of `App:LogWindowLines` lines (1,000 by default, from 100 to 10,000) that drops the oldest line when it's full, and it cuts each message to 1,000 characters, so it holds about 2 MB at the most. The log window redraws at most four times a second, and only while it's open.
+
+Exceptions are logged by type only. Request lines carry `host:port` and status, which is a browsing history of sorts: keep the retention short.
+
+The flyout's debug logging switch turns on Debug-level lines, such as each accepted connection and each server connection opened or reused, until the app restarts. `DebugLoggingSwitch` is the last configuration source: while it's on, it sets `Logging:LogLevel:Default` and `Logging:LogLevel:WSLProxy` to `Debug` and raises a reload, so the logging filters change at once for both destinations. It keeps its values only in memory, so debug logging is always off at start-up.
 
 ## Decisions
 

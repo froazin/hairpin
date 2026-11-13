@@ -297,6 +297,11 @@ public sealed partial class RelayService : BackgroundService, IRelayStatus, IRel
         try
         {
             client.NoDelay = true;
+            if (_logger.IsEnabled(LogLevel.Debug) && client.RemoteEndPoint is System.Net.IPEndPoint remote)
+            {
+                Log.Accepted(_logger, remote.Port);
+            }
+
             var session = new ClientSession(client, this);
             await using (session.ConfigureAwait(false))
             {

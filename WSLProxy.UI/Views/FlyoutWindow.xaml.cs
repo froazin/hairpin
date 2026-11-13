@@ -55,8 +55,11 @@ public partial class FlyoutWindow : Window
     /// <summary>Raised when the user asks for the settings window.</summary>
     public event EventHandler? SettingsRequested;
 
-    /// <summary>Raised when the user asks to open the log folder.</summary>
+    /// <summary>Raised when the user asks for the log window.</summary>
     public event EventHandler? LogsRequested;
+
+    /// <summary>Raised when the user turns debug logging on (true) or off (false).</summary>
+    public event EventHandler<bool>? DebugLoggingRequested;
 
     /// <summary>Raised when the user asks to quit.</summary>
     public event EventHandler? QuitRequested;
@@ -149,6 +152,9 @@ public partial class FlyoutWindow : Window
         PauseGlyph.Text = ((char)(paused ? 0xE768 : 0xE769)).ToString(); // Segoe Fluent Icons: Play, Pause.
     }
 
+    /// <summary>Shows whether debug logging is on.</summary>
+    public void SetDebugLogging(bool enabled) => DebugBox.IsChecked = enabled;
+
     /// <summary>Confirms on the button that the setup was copied.</summary>
     public void ShowCopied()
     {
@@ -181,6 +187,8 @@ public partial class FlyoutWindow : Window
         HideFlyout();
         LogsRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    private void OnDebugClick(object sender, RoutedEventArgs e) => DebugLoggingRequested?.Invoke(this, DebugBox.IsChecked != true);
 
     private void OnQuitClick(object sender, RoutedEventArgs e) => QuitRequested?.Invoke(this, EventArgs.Empty);
 }

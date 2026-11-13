@@ -18,6 +18,9 @@ public sealed class AppOptions
 
     /// <summary>How many days of log files to keep.</summary>
     public int LogRetentionDays { get; set; } = 7;
+
+    /// <summary>How many recent log lines the log window keeps in memory, from 100 to 10,000. The log files keep everything.</summary>
+    public int LogWindowLines { get; set; } = 1000;
 }
 
 /// <summary>The settings a user can change in the settings window.</summary>

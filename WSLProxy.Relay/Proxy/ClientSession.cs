@@ -152,6 +152,7 @@ internal sealed class ClientSession : IAsyncDisposable
         }
 
         await using var server = new ServerConnection(socket, runtime, string.Empty);
+        Log.ServerOpened(Logger, host.Value, request.Port, decision.Kind);
         var status = 200;
         if (decision.Kind == RouteKind.Upstream)
         {
@@ -466,6 +467,7 @@ internal sealed class ClientSession : IAsyncDisposable
     {
         if (_server is not null && ReferenceEquals(_server.Runtime, runtime) && _server.Key == key && _server.IsReusable())
         {
+            Log.ServerReused(Logger, host.Value, port);
             return true;
         }
 
@@ -474,6 +476,7 @@ internal sealed class ClientSession : IAsyncDisposable
             ? await ConnectUpstreamAsync(runtime, cancellationToken).ConfigureAwait(false)
             : await Connector.ConnectDirectAsync(host, port, runtime.Router, runtime.ConnectTimeout, cancellationToken).ConfigureAwait(false);
         _server = new ServerConnection(socket, runtime, key);
+        Log.ServerOpened(Logger, host.Value, port, toUpstream ? RouteKind.Upstream : RouteKind.Direct);
         return false;
     }
 
