@@ -125,6 +125,18 @@
                 <Border Style="{StaticResource Card}">
                     <CheckBox x:Name="StartAtLoginBox" Content="Start WSL Proxy Relay when I sign in to Windows" />
                 </Border>
+
+                <!-- Troubleshooting: acts straight away, so Save and Cancel don't apply. -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Troubleshooting" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="These apply straight away, without Save. Debug logging adds detail to the logs, and turns off again when the app restarts." />
+                        <CheckBox x:Name="DebugBox" Content="Debug logging until restart" Click="OnDebugClick" />
+                        <Button Content="Show logs" HorizontalAlignment="Left" Margin="0,12,0,0" Click="OnLogsClick"
+                                AutomationProperties.Name="Show the recent log lines" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

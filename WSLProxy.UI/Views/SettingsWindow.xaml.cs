@@ -29,6 +29,19 @@ public partial class SettingsWindow : Window
         StartAtLoginBox.IsChecked = current.StartAtLogin;
     }
 
+    /// <summary>Raised when the user asks for the log window.</summary>
+    public event EventHandler? LogsRequested;
+
+    /// <summary>Raised when the user turns debug logging on (true) or off (false). It applies straight away, without Save.</summary>
+    public event EventHandler<bool>? DebugLoggingRequested;
+
+    /// <summary>Shows whether debug logging is on.</summary>
+    public void SetDebugLogging(bool enabled) => DebugBox.IsChecked = enabled;
+
+    private void OnLogsClick(object sender, RoutedEventArgs e) => LogsRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnDebugClick(object sender, RoutedEventArgs e) => DebugLoggingRequested?.Invoke(this, DebugBox.IsChecked == true);
+
     private void OnCancelClick(object sender, RoutedEventArgs e) => Close();
 
     /// <inheritdoc />

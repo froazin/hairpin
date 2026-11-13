@@ -56,9 +56,9 @@
                         <RowDefinition />
                         <RowDefinition />
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Proxy" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                    <TextBlock Grid.Row="0" Text="Listening" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     <TextBlock Grid.Row="0" Grid.Column="1" x:Name="EndpointText" Margin="0,2" FontFamily="Cascadia Mono, Consolas" FontSize="12" />
-                    <TextBlock Grid.Row="1" Text="Upstream" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                    <TextBlock Grid.Row="1" x:Name="UpstreamLabel" Text="Upstream" Margin="0,2,16,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     <TextBlock Grid.Row="1" Grid.Column="1" x:Name="UpstreamText" Margin="0,2" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextBlockStyle}" />
                 </Grid>
 
@@ -169,23 +169,8 @@
         <Button Style="{StaticResource RowButton}" Click="OnSettingsClick" AutomationProperties.Name="Open settings">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE713;" />
-                <TextBlock Text="Settings and bypass list" VerticalAlignment="Center" />
+                <TextBlock Text="Settings" VerticalAlignment="Center" />
             </StackPanel>
-        </Button>
-        <Button Style="{StaticResource RowButton}" Click="OnLogsClick" AutomationProperties.Name="Show the recent log lines">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" />
-                <TextBlock Text="Logs" VerticalAlignment="Center" />
-            </StackPanel>
-        </Button>
-        <Button Style="{StaticResource RowButton}" HorizontalContentAlignment="Stretch" Click="OnDebugClick"
-                AutomationProperties.Name="Turn debug logging on or off until the app restarts">
-            <DockPanel>
-                <CheckBox x:Name="DebugBox" DockPanel.Dock="Right" IsHitTestVisible="False" Focusable="False" MinWidth="0"
-                          VerticalAlignment="Center" Margin="8,0,0,0" />
-                <TextBlock Style="{StaticResource Glyph}" Text="&#xEBE8;" />
-                <TextBlock Text="Debug logging until restart" VerticalAlignment="Center" />
-            </DockPanel>
         </Button>
 
         <Separator Margin="12,4" />

@@ -1,8 +1,10 @@
+using WSLProxy.UI.Interop;
 using WSLProxy.UI.Tray;
+using WSLProxy.UI.Views;
 
 namespace WSLProxy.UI.Tests;
 
-/// <summary>The tray glyph's theme choice, the badged icon image and the WSL setup snippet.</summary>
+/// <summary>The tray glyph's theme choice, the badged icon image, the WSL setup snippet and where the flyout sits.</summary>
 [TestClass]
 [OSCondition(OperatingSystems.Windows)]
 public sealed class TrayTests
@@ -16,6 +18,27 @@ public sealed class TrayTests
     public void Glyph_follows_the_taskbar_theme_or_the_high_contrast_window(bool highContrast, double windowLuma, int? systemUsesLightTheme, Glyph expected)
     {
         Assert.AreEqual(expected, TrayGlyph.Choose(highContrast, windowLuma, systemUsesLightTheme));
+    }
+
+    [TestMethod]
+    [DataRow(1600, 900, 1588, 888, DisplayName = "Flush with the taskbar and screen edge moves in by the gap")]
+    [DataRow(1200, 500, 1200, 500, DisplayName = "Already clear stays put")]
+    [DataRow(0, 0, 12, 12, DisplayName = "Flush with a top or left taskbar moves in by the gap")]
+    public void Flyout_keeps_a_gap_from_the_edges_of_the_work_area(int left, int top, int expectedLeft, int expectedTop)
+    {
+        var work = new NativeMethods.RECT { Left = 0, Top = 0, Right = 1920, Bottom = 1400 };
+        var window = new NativeMethods.RECT { Left = left, Top = top, Right = left + 320, Bottom = top + 500 };
+
+        Assert.AreEqual((expectedLeft, expectedTop), FlyoutWindow.KeepClear(window, work, gap: 12));
+    }
+
+    [TestMethod]
+    public void Flyout_taller_than_the_work_area_and_two_gaps_keeps_inside_it_without_them()
+    {
+        var work = new NativeMethods.RECT { Left = 0, Top = 0, Right = 1920, Bottom = 510 };
+        var window = new NativeMethods.RECT { Left = 1600, Top = 10, Right = 1920, Bottom = 510 };
+
+        Assert.AreEqual((1588, 10), FlyoutWindow.KeepClear(window, work, gap: 12));
     }
 
     [TestMethod]
