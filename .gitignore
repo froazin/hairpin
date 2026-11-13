@@ -19,7 +19,7 @@ bld/
 # .NET Core
 project.lock.json
 project.fragment.lock.json
-artifacts/
+[Aa]rtifacts/
 
 # NuGet Packages
 *.nupkg

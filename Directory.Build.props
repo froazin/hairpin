@@ -1,0 +1,38 @@
+<Project>
+  <!-- Settings shared by every project in the repository. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Build hygiene: fail on warnings and run the recommended analysers. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591: missing XML comments. Documentation is required on public APIs only where it adds value. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
+
+    <!-- Reproducible output. CI sets GITHUB_ACTIONS, which normalises source paths. -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- NuGet supply chain: committed lock files, locked restore in CI, audit everything. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+
+    <!-- Product metadata. build.ps1 passes the version from GitVersion. -->
+    <Product>WSL Proxy Relay</Product>
+    <Company>John Reardon</Company>
+    <Copyright>Copyright (c) 2026 John Reardon. MIT License.</Copyright>
+    <NeutralLanguage>en-GB</NeutralLanguage>
+    <Version Condition="'$(Version)' == ''">0.0.0-local</Version>
+  </PropertyGroup>
+</Project>
