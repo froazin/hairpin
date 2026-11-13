@@ -128,6 +128,7 @@ public static partial class Program
         builder.Services.AddSingleton(sp => new TrayApplication(
             sp.GetRequiredService<IRelayStatus>(),
             sp.GetRequiredService<IRelayControl>(),
+            sp.GetRequiredService<IRelayMetrics>(),
             sp.GetRequiredService<IOptionsMonitor<RelayOptions>>(),
             sp.GetRequiredService<IOptionsMonitor<AppOptions>>(),
             sp.GetRequiredService<UserSettingsStore>(),

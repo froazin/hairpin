@@ -211,7 +211,9 @@ internal sealed class ClientSession : IAsyncDisposable
             new Tunnel.Side(_client, _clientStream, _clientReader),
             new Tunnel.Side(server.Socket, server.Stream, server.Reader),
             runtime.TunnelIdleTimeout,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            _host.Traffic.AddUp,
+            _host.Traffic.AddDown).ConfigureAwait(false);
         LogRequest(request, decision, status, up, down, started);
     }
 
@@ -313,7 +315,7 @@ internal sealed class ClientSession : IAsyncDisposable
 
         // The wait for the response head restarts whenever request body bytes go out, so a long upload isn't cut off.
         using var headIdle = new IdleTimer(runtime.IdleTimeout, exchangeCts.Token);
-        var requestBody = new ActivityStream(server.Stream, headIdle.Touch);
+        var requestBody = new ActivityStream(server.Stream, headIdle.Touch, _host.Traffic.AddUp);
         var bodyFailed = false;
         var bodyTask = requestFraming.Kind == BodyKind.None ? Task.CompletedTask : CopyRequestBodyAsync();
 
@@ -442,10 +444,10 @@ internal sealed class ClientSession : IAsyncDisposable
     }
 
     /// <summary>Copies a body with an idle timeout that resets on every write. A stall surfaces as an <see cref="IOException"/>.</summary>
-    private static async Task<long> CopyWithIdleAsync(HttpReader from, BodyFraming framing, Stream to, RelayRuntime runtime, CancellationToken cancellationToken)
+    private async Task<long> CopyWithIdleAsync(HttpReader from, BodyFraming framing, Stream to, RelayRuntime runtime, CancellationToken cancellationToken)
     {
         using var idle = new IdleTimer(runtime.IdleTimeout, cancellationToken);
-        var destination = new ActivityStream(to, idle.Touch);
+        var destination = new ActivityStream(to, idle.Touch, _host.Traffic.AddDown);
         try
         {
             await from.CopyBodyAsync(framing, destination, runtime.Limits.MaxHeaderBytes, idle.Token).ConfigureAwait(false);
@@ -508,6 +510,7 @@ internal sealed class ClientSession : IAsyncDisposable
     private async Task RefuseAsync(int status, string reason, string? detail, CancellationToken cancellationToken)
     {
         Log.Refused(Logger, status, reason);
+        _host.Traffic.Refused();
         try
         {
             await _clientStream.WriteAsync(HeadWriter.BuildError(status, detail), cancellationToken).ConfigureAwait(false);
@@ -520,6 +523,7 @@ internal sealed class ClientSession : IAsyncDisposable
 
     private void LogRequest(RequestHead request, RouteDecision decision, int status, long up, long down, long started)
     {
+        _host.Traffic.Completed(decision.Kind);
         if (Logger.IsEnabled(LogLevel.Information))
         {
             var elapsed = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;

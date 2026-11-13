@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<RelayService>());
         services.AddSingleton<IRelayStatus>(sp => sp.GetRequiredService<RelayService>());
         services.AddSingleton<IRelayControl>(sp => sp.GetRequiredService<RelayService>());
+        services.AddSingleton<IRelayMetrics>(sp => sp.GetRequiredService<RelayService>());
         return services;
     }
 

@@ -7,6 +7,7 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 1. [Start-up](#start-up)
 1. [Tray icon](#tray-icon)
 1. [Flyout and settings window](#flyout-and-settings-window)
+1. [Traffic metrics](#traffic-metrics)
 1. [Settings checks](#settings-checks)
 1. [Settings files](#settings-files)
 1. [Start at sign-in](#start-at-sign-in)
@@ -37,7 +38,7 @@ How the executable and the tray UI work: start-up, the notification area icon, t
 
 The UI uses WPF's Fluent theme with `ThemeMode.System`, so it follows Windows' light or dark app theme and accent colour. Colours and styles come only from Fluent resources, such as `CardBackgroundFillColorDefaultBrush` and `AccentButtonStyle`, never fixed values.
 
-- **Flyout** (`FlyoutWindow`): a left or right click on the icon opens it next to the icon. `CalculatePopupWindowPosition` places it in physical pixels, clear of the icon and inside the work area, wherever the taskbar is. It shows the state, endpoint, upstream health, traffic and any error, with Pause or Resume, Copy WSL setup, Settings, Logs, a debug logging switch and Quit. The window moves to the icon's monitor before it's measured, so per-monitor DPI is right, and it re-places itself when its height changes. A double-click opens it rather than toggling it. It hides when it loses focus or on <kbd>Esc</kbd>.
+- **Flyout** (`FlyoutWindow`): a left or right click on the icon opens it next to the icon. `CalculatePopupWindowPosition` places it in physical pixels, clear of the icon and inside the work area, wherever the taskbar is. It shows the state, endpoint, upstream health and any error, then any [settings check](#settings-checks) problems and the [traffic metrics](#traffic-metrics). Its actions are Pause or Resume, Copy WSL setup, Settings, Logs, a debug logging switch and Quit. The window moves to the icon's monitor before it's measured, so per-monitor DPI is right, and it re-places itself when its height changes. A double-click opens it rather than toggling it. It hides when it loses focus or on <kbd>Esc</kbd>.
 - **Log window** (`LogWindow`): the recent log lines held in memory, live, with a lowest-level filter, a text filter, Copy, Clear and Open log folder. See [Logging](#logging).
 - **Settings window** (`SettingsWindow`): upstream host and port, the bypass list, the relay port, the local deny list and start at sign-in. `BypassEntries` checks each bypass entry with `NoProxyRule.TryParse` as it's added, and splits a pasted `no_proxy` value into entries.
 
@@ -62,6 +63,15 @@ sequenceDiagram
     R-->>F: Status changed
     F->>U: New state shown
 ```
+
+## Traffic metrics
+
+The flyout's Traffic card shows the rates down and up now (averaged over the last 3 seconds), a chart of the last 2 minutes, the open connections, requests in the last minute, the relay's own errors, and totals since start with the share of requests that went direct.
+
+- `RelayService` keeps the totals in `TrafficCounters` and offers them through `IRelayMetrics.Read()`. They're updated as each body or tunnel write completes, so a long CONNECT tunnel counts while it runs. Message heads aren't counted.
+- `TrafficMonitor` samples them once a second into a `RingBuffer` of 300 samples (5 minutes), whether the flyout is open or not, so the chart has history when it opens. That's a fixed few tens of kilobytes, however busy the relay is.
+- `TrafficSummary.From` works out the rates and the chart points from the samples, and the flyout redraws once a second, only while it's open. Rates use `Stopwatch` time, so a clock change can't skew them.
+- Errors are requests the relay answered with its own error: a refusal, a failed connection or a timeout. A server's own `5xx` responses aren't counted.
 
 ## Settings checks
 

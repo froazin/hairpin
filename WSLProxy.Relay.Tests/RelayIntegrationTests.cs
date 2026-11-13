@@ -131,7 +131,7 @@ public sealed class RelayIntegrationTests
     }
 
     [TestMethod]
-    public async Task Connect_tunnels_bytes_both_ways()
+    public async Task Connect_tunnels_bytes_both_ways_and_counts_them_while_open()
     {
         using var cts = new CancellationTokenSource(Timeout);
         using var echo = new TcpListener(IPAddress.Loopback, 0);
@@ -162,12 +162,18 @@ public sealed class RelayIntegrationTests
         await stream.ReadExactlyAsync(reply, cts.Token);
         Assert.AreEqual("ping", Encoding.ASCII.GetString(reply));
 
+        // Counted while the tunnel is still open, not only when it closes.
+        var live = relay.Service.Read();
+        Assert.AreEqual(4, live.BytesUp);
+        Assert.AreEqual(4, live.BytesDown);
+        Assert.AreEqual(1, live.ActiveConnections);
+
         client.Shutdown(SocketShutdown.Send);
         await echoTask.WaitAsync(cts.Token);
     }
 
     [TestMethod]
-    public async Task Local_destinations_are_refused_by_default()
+    public async Task Local_destinations_are_refused_by_default_and_counted_as_errors()
     {
         using var cts = new CancellationTokenSource(Timeout);
         await using var relay = await StartRelayAsync(denyLocal: true, cts.Token);
@@ -178,6 +184,7 @@ public sealed class RelayIntegrationTests
         await stream.WriteAsync("CONNECT 127.0.0.1:445 HTTP/1.1\r\nHost: 127.0.0.1:445\r\n\r\n"u8.ToArray(), cts.Token);
         var head = await reader.ReadHeadAsync(8192, cts.Token);
         StringAssert.StartsWith(Encoding.Latin1.GetString(head.Head.Span), "HTTP/1.1 403 Forbidden\r\n");
+        Assert.AreEqual(1, relay.Service.Read().Errors);
     }
 
     private static async Task<Socket> ConnectAsync(int port, CancellationToken cancellationToken)
@@ -204,12 +211,14 @@ public sealed class RelayIntegrationTests
 
     private sealed class RunningRelay(RelayService service, int port) : IAsyncDisposable
     {
+        public RelayService Service { get; } = service;
+
         public int Port { get; } = port;
 
         public async ValueTask DisposeAsync()
         {
-            await service.StopAsync(CancellationToken.None);
-            service.Dispose();
+            await Service.StopAsync(CancellationToken.None);
+            Service.Dispose();
         }
     }
 

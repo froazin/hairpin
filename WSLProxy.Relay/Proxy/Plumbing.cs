@@ -56,6 +56,8 @@ internal interface ISessionHost
     void OnRequest();
 
     void OnUpstreamResult(bool reachable);
+
+    TrafficCounters Traffic { get; }
 }
 
 /// <summary>Source-generated log messages. None of them carries a path, query, header or body.</summary>
@@ -110,7 +112,7 @@ internal static partial class Log
 /// Wraps a destination stream and records when bytes last went through it, so tunnels and bodies can apply an idle timeout
 /// that resets on activity.
 /// </summary>
-internal sealed class ActivityStream(Stream inner, Action onActivity) : Stream
+internal sealed class ActivityStream(Stream inner, Action onActivity, Action<int>? onBytes = null) : Stream
 {
     public long BytesWritten { get; private set; }
 
@@ -138,6 +140,7 @@ internal sealed class ActivityStream(Stream inner, Action onActivity) : Stream
     {
         inner.Write(buffer, offset, count);
         BytesWritten += count;
+        onBytes?.Invoke(count);
         onActivity();
     }
 
@@ -145,6 +148,7 @@ internal sealed class ActivityStream(Stream inner, Action onActivity) : Stream
     {
         await inner.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         BytesWritten += buffer.Length;
+        onBytes?.Invoke(buffer.Length);
         onActivity();
     }
 
@@ -185,4 +189,36 @@ internal sealed class IdleTimer : IDisposable
     public void MarkIfTimedOut(CancellationToken parent) => TimedOut = _cts.IsCancellationRequested && !parent.IsCancellationRequested;
 
     public void Dispose() => _cts.Dispose();
+}
+
+/// <summary>
+/// Traffic totals since the relay started, updated as bytes are written, so a long tunnel counts while it runs. Bytes are
+/// bodies and tunnel data; message heads aren't counted.
+/// </summary>
+internal sealed class TrafficCounters
+{
+    private long _bytesUp;
+    private long _bytesDown;
+    private long _direct;
+    private long _upstream;
+    private long _errors;
+
+    public void AddUp(int count) => Interlocked.Add(ref _bytesUp, count);
+
+    public void AddDown(int count) => Interlocked.Add(ref _bytesDown, count);
+
+    /// <summary>Counts a finished request by its route.</summary>
+    public void Completed(Routing.RouteKind route) => Interlocked.Increment(ref route == Routing.RouteKind.Upstream ? ref _upstream : ref _direct);
+
+    /// <summary>Counts a request the relay answered with its own error, such as a refusal or a failed connection.</summary>
+    public void Refused() => Interlocked.Increment(ref _errors);
+
+    public Status.RelayCounters Read(long requests, int activeConnections) => new(
+        requests,
+        Interlocked.Read(ref _direct),
+        Interlocked.Read(ref _upstream),
+        Interlocked.Read(ref _errors),
+        Interlocked.Read(ref _bytesUp),
+        Interlocked.Read(ref _bytesDown),
+        activeConnections);
 }

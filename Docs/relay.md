@@ -112,7 +112,7 @@ TCP keep-alive isn't turned on for client sockets: it breaks WSL mirrored-mode l
 
 It validates every version of the settings itself. Invalid settings never stop a running relay: it keeps listening with the last good settings and reports the problem in `RelaySnapshot.LastError`. If the settings are invalid at start-up, it stays Faulted until they're fixed. Settings aren't validated through the options system, because a failure there during a file reload would be thrown on the file watcher's thread.
 
-A change to the port rebinds the listener. Other changes apply to the next request, even on a kept-alive connection. Pausing closes the listener, and open connections finish. With an upstream configured, a TCP probe every `HealthCheckIntervalSeconds` sets `UpstreamHealth`. Status changes are published at most four times a second.
+A change to the port rebinds the listener. Other changes apply to the next request, even on a kept-alive connection. Pausing closes the listener, and open connections finish. With an upstream configured, a TCP probe every `HealthCheckIntervalSeconds` sets `UpstreamHealth`. Status changes are published at most four times a second. Traffic totals (requests by route, the relay's own errors, and body and tunnel bytes each way) are kept separately in `TrafficCounters`, updated as bytes are written, and read with `IRelayMetrics.Read()` rather than published, so traffic never floods the status events.
 
 ## Security
 
