@@ -12,6 +12,7 @@ How the proxy engine in [WSLProxy.Relay/](../WSLProxy.Relay/) works: what it acc
 1. [Limits and timeouts](#limits-and-timeouts)
 1. [Lifecycle, settings and status](#lifecycle-settings-and-status)
 1. [Security](#security)
+1. [Shared machines](#shared-machines)
 1. [Decisions](#decisions)
 1. [Known limits](#known-limits)
 
@@ -121,6 +122,17 @@ A change to the port rebinds the listener. Other changes apply to the next reque
 - `Proxy-Authorization` is never forwarded. The relay holds no credentials.
 - A request that already carries the relay's own `Via` value is refused, and an upstream that resolves to the relay's own port is refused, so the relay can't loop through itself.
 
+## Shared machines
+
+The relay is for machines with one signed-in user. Don't run it on Remote Desktop Session Hosts, jump boxes, shared lab PCs or any machine where other people sign in at the same time.
+
+- **Loopback is shared.** `127.0.0.1` belongs to the whole machine, not to one Windows session. Any process in any session, including another user's WSL in mirrored mode or a service, can connect to the relay. It has no proxy authentication, so it can't tell who's asking.
+- **Their traffic leaves as yours.** Every connection the relay makes comes from its own process, in your session. Endpoint network agents such as WSS Agent identify users by their Windows sign-in, so they attribute the traffic to you (inferred: not tested with two users signed in), and another user's requests are filtered by your policy and logged against your name. If your policy is more permissive than theirs, they get round their own.
+- **The port can be taken silently.** The relay holds its port exclusively, so a second user's relay can't bind the same port and reports the error. But that user's WSL clients, still set to `127.0.0.1:3128`, reach the first user's relay instead, with nothing to show it.
+- **Why the relay can't check.** Windows can name the process that owns a loopback connection, but in mirrored mode a connection from WSL doesn't map reliably to the Linux process or the user behind it, so the relay can't filter clients by user.
+
+The local deny list still stops anyone from using the relay to reach services on `127.0.0.1` or link-local addresses as you.
+
 ## Decisions
 
 - **Hand-written proxy, not Kestrel or YARP.** Neither supports HTTP/1.1 CONNECT tunnelling as a forward proxy, and both would add dependencies.
@@ -132,6 +144,6 @@ A change to the port rebinds the listener. Other changes apply to the next reque
 
 - No `Upgrade`, so plain `ws://` websockets don't work. `wss://` works, because it uses CONNECT.
 - No proxy authentication.
-- Any process on the machine can use the relay, including other signed-in users on a shared host, and their traffic leaves as yours. The relay is for single-user machines. Filtering clients by owning user would need the WSL client's owning process, which mirrored mode doesn't expose reliably.
+- Any process on the machine can use the relay, including other signed-in users, and their traffic leaves as yours. The relay is for single-user machines: see [Shared machines](#shared-machines).
 - The local deny list applies to direct routes. On the upstream route the upstream proxy resolves names, so a name that resolves to a local address is the upstream's to refuse. This matters only for an upstream on the same machine.
 - HTTP/1.0 is accepted only for CONNECT.
