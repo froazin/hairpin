@@ -43,6 +43,20 @@ Signing needs `signtool.exe` from the Windows SDK and a code signing certificate
 
 With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` and `WSLProxyRelay-<version>-self-contained.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundles. It also needs `makeappx.exe` and `makepri.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
 
+### Build a release
+
+A release is a `v<version>` tag, with no packages. The [Tags page](https://github.com/froazin/wsl-proxy-relay/tags) lists them. To build one, clone its tag with Git, then run the full build from the clone:
+
+```powershell
+git clone --branch v<version> https://github.com/froazin/wsl-proxy-relay.git
+cd wsl-proxy-relay
+./build.ps1
+```
+
+- The builds are the zips in `Artifacts/`, stamped with `<version>`. Tags up to `v0.11.0` predate this, so a build from one of them is stamped with a pre-release version instead, such as `0.11.1--no-branch-.1`.
+- Clone the tag rather than downloading its source code archive. `build.ps1` works out the version from the Git history, and fails without the `.git` folder.
+- If PowerShell says running scripts is disabled on this system, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first. It applies only to that PowerShell window.
+
 ### A test certificate for MSIX
 
 To test the MSIX build without a real code signing certificate, make a self-signed one in Windows PowerShell 5.1:
@@ -58,13 +72,13 @@ Export-Certificate -Cert $cert -FilePath <path>\wslproxy-test.cer
 - To install the bundle on a test machine, trust the certificate there from an elevated session: `Import-Certificate -FilePath <path>\wslproxy-test.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`.
 - Remove the certificate from each store when you've finished testing. Never use a self-signed certificate for a package you give to anyone else.
 
-Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block unsigned executables, and does so unpredictably for new builds (observed). The test project builds no `.exe` for this reason: tests run through the signed `dotnet` host. Releases aren't code-signed yet, so they can be blocked too.
+Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block unsigned executables, and does so unpredictably for new builds (observed). The test project builds no `.exe` for this reason: tests run through the signed `dotnet` host. An unsigned build of the app can be blocked too.
 
 ## CI
 
 Each pull request to `main` runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on GitHub Actions:
 
-1. `./build.ps1` on Windows Server 2025, in Windows PowerShell 5.1. A pull request that only changes docs or editor and agent settings skips it. Download the zips it builds from the run's `packages` artifact.
+1. `./build.ps1` on Windows Server 2025, in Windows PowerShell 5.1. A pull request that only changes docs or editor and agent settings skips it. CI keeps none of the build's output, so build locally to try a change.
 1. When the build passes or is skipped, Claude reviews the change against [REVIEW.md](REVIEW.md) and comments on the pull request. Resolve every thread before you merge, with a fix or a reply.
 
 [Docs/ci.md](Docs/ci.md) describes the workflow.
@@ -101,5 +115,4 @@ The version follows [Semantic Versioning](https://semver.org/). GitVersion works
 - Types are lowercase and exact: `Feat:` or `feature:` doesn't bump.
 - Until the project reaches 1.0.0, don't use `!` or a `BREAKING CHANGE` line: a breaking change is a `feat`, and its body explains what breaks.
 - GitVersion needs the full history and tags. In a shallow clone it gives a wrong version without an error, so CI must fetch with `fetch-depth: 0`.
-- The release workflow tags each release `v<version>` from `main`, using `MajorMinorPatch`, and publishes the zips with `SHA256SUMS.txt`. There's something to release only when `MajorMinorPatch` differs from `VersionSourceSemVer`. Don't create release tags yourself. [Docs/releases.md](Docs/releases.md) describes the workflow.
-- Releases aren't code-signed yet. Check a download against `SHA256SUMS.txt`.
+- The release workflow tags each release `v<version>` from `main`, using `MajorMinorPatch`. A release is only that tag, with no GitHub release and no packages: users build the app from it, as [Build a release](#build-a-release) says. There's something to release only when `MajorMinorPatch` differs from `VersionSourceSemVer`. Don't create release tags yourself. [Docs/releases.md](Docs/releases.md) describes the workflow.

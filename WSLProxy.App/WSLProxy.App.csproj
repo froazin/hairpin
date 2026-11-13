@@ -11,7 +11,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <!-- Publish a plain framework-dependent folder for each runtime: the app runs on the .NET Desktop Runtime installed on
-         the machine, which Microsoft Update patches, rather than carrying its own copy that only a new release would
+         the machine, which Microsoft Update patches, rather than carrying its own copy that only a new build would
          patch. No single-file extraction to %TEMP%, and no trimming (unsupported by WPF). -->
     <SelfContained>false</SelfContained>
     <PublishSingleFile>false</PublishSingleFile>

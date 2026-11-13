@@ -1,9 +1,10 @@
 ---
 name: CI
 
-# Builds and tests each pull request, and builds what the release workflow publishes when it calls this one on a push
-# to main. Only a pull request gets Claude's code review. Every pull request starts a run, so a docs-only one is still
-# reviewed against the code. It skips the build job instead, when nothing the build reads changed.
+# Builds and tests each pull request, and each push to main when the release workflow calls this one, which also works
+# out the version to release. Only a pull request gets Claude's code review. Every pull request starts a run, so a
+# docs-only one is still reviewed against the code. It skips the build job instead, when nothing the build reads
+# changed.
 on:
   pull_request:
     branches:
@@ -96,7 +97,7 @@ jobs:
           persist-credentials: false
 
       # Any .NET 10 SDK satisfies global.json, which rolls forward to the latest feature band. No cache, so nothing a
-      # pull request saved can reach a build the release workflow publishes.
+      # pull request saved can reach a build of main.
       - name: Set up .NET
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
@@ -104,7 +105,8 @@ jobs:
 
       # The same script as a local build: GitVersion, a locked restore, the build with warnings as errors, the tests, a
       # framework-dependent and a self-contained publish for each runtime, the zips and SHA256SUMS.txt. Windows
-      # PowerShell 5.1, because the script must run there too.
+      # PowerShell 5.1, because the script must run there too. Users build the app from a release's tag with it, so CI
+      # runs all of it, but uploads nothing: a release is only a tag.
       - name: Build, test and publish
         shell: powershell
         run: ./build.ps1
@@ -120,16 +122,6 @@ jobs:
           Write-Output "Version $($v.MajorMinorPatch), counted from $($v.VersionSourceSemVer). Release due: $due."
           "version=$($v.MajorMinorPatch)" >> $env:GITHUB_OUTPUT
           "release-due=$($due.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-
-      - name: Upload the packages
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: packages
-          path: |
-            Artifacts/*.zip
-            Artifacts/SHA256SUMS.txt
-          if-no-files-found: error
-          retention-days: 7
 
   code-review:
     name: Code review

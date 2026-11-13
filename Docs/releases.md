@@ -1,6 +1,6 @@
 # Releases
 
-How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases WSL Proxy Relay from `main`: when a release is made, how its version is worked out, what it publishes and the tag it creates. It also covers the signed MSIX bundle that `build.ps1 -Msix` builds from source, which releases don't include. It's for engineers changing the workflow, [`GitVersion.yaml`](../GitVersion.yaml) or the MSIX build.
+How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases WSL Proxy Relay from `main`: when a release is made, how its version is worked out and the tag it creates. A release is only a tag, and users build the app from it, so this doc also covers the builds that `build.ps1` makes, including the signed MSIX bundle that `build.ps1 -Msix` builds. It's for engineers changing the workflow, [`GitVersion.yaml`](../GitVersion.yaml) or the MSIX build.
 
 ## Contents
 
@@ -21,14 +21,14 @@ The workflow runs on every push to `main` that changes more than the docs or age
 ```mermaid
 flowchart LR
     accTitle: The jobs that release WSL Proxy Relay
-    accDescr: A push to main starts the release workflow. Its ci job calls the CI workflow, which builds, tests and packages the app and works out the version. When a release is due, the release job checks it's the newest run, downloads the packages, checks their hashes and creates a GitHub release with them.
+    accDescr: A push to main starts the release workflow. Its ci job calls the CI workflow, which builds and tests the app and works out the version. When a release is due, the release job checks it's the newest run and tags the commit vX.Y.Z, with no GitHub release and no packages.
     push["Push to main"] -->|"not only docs"| ci["ci: calls ci.yml"]
     ci -->|"release not due"| stop["Nothing to release"]
-    ci -->|"release due: packages and vX.Y.Z"| release["release: check hashes, gh release create"]
+    ci -->|"release due: vX.Y.Z"| release["release: create the tag"]
 ```
 
-- **`ci`** calls [`ci.yml`](../.github/workflows/ci.yml), so a push straight to `main` is checked as a PR is, and a failed build or test releases nothing. Its build job uploads the packages and outputs the version and whether a release is due. CI's code review runs only on a PR, so it's skipped here.
-- **`release`** runs only when a release is due. It checks it's the newest run of the workflow with `gh run list`, downloads the `packages` artifact, checks every zip against `SHA256SUMS.txt`, and runs `gh release create`.
+- **`ci`** calls [`ci.yml`](../.github/workflows/ci.yml), so a push straight to `main` is checked as a PR is, and a failed build or test releases nothing. Its build job outputs the version and whether a release is due, and uploads nothing. CI's code review runs only on a PR, so it's skipped here.
+- **`release`** runs only when a release is due. It checks it's the newest run of the workflow with `gh run list`, then creates an annotated `vX.Y.Z` tag on the commit with the GitHub API. It creates no GitHub release and publishes no packages.
 
 Runs share the `release` concurrency group: a run waits for the one in progress, and a newer push replaces a run that's still waiting, so two releases never race.
 
@@ -47,18 +47,19 @@ Runs share the `release` concurrency group: a run waits for the one in progress,
 - A release is due when `MajorMinorPatch` differs from `VersionSourceSemVer`, the version GitVersion counts from. A run whose commits are all of a type with no bump, such as a Dependabot `chore(deps)` update, releases nothing: the change ships with the next release.
 - `main` uses `ContinuousDeployment` with `increment: None`, so the version on `main` is a plain `X.Y.Z` with no pre-release label.
 - With no tags, GitVersion counts from `0.0.0`, so the first `feat` gives `0.1.0`.
+- A detached HEAD, which `git clone --branch vX.Y.Z` leaves, uses the `unknown` branch config. Its `prevent-increment.when-current-commit-tagged` makes a commit with a `v` tag give exactly that tag's version, so a build from a cloned tag is stamped `X.Y.Z`. Without it, `v0.11.0` gave `0.11.1--no-branch-.1` (observed). A detached commit with no tag still gives a pre-release version.
 
 ## Tags and releases
 
-- Each release is a GitHub release with a `vX.Y.Z` tag on the commit the run came from. Its assets are the four zips, a framework-dependent and a self-contained build for each of `win-x64` and `win-arm64` (see [The .NET runtime](#the-net-runtime)), and `SHA256SUMS.txt`.
-- The notes start with a warning that the builds aren't code-signed, and say that the plain zips need the .NET 10 Desktop Runtime, with the `winget` command that installs it, and the self-contained zips don't. Notes GitHub generates from the merged PRs follow.
-- Only the workflow creates release tags. Nobody tags a release by hand.
+- A release is only an annotated `vX.Y.Z` tag on the commit the run came from. The workflow creates no GitHub release, so there are no release notes and no packages. The squash-merged commits since the previous tag are the change log.
+- Users build a release from source: they clone its tag with `git clone --branch vX.Y.Z` and run `build.ps1`, which makes either of the builds that [The .NET runtime](#the-net-runtime) describes. [Build a release](../CONTRIBUTING.md#build-a-release) in `CONTRIBUTING.md` has the steps.
+- `build.ps1` works out the version from the Git history, so it needs a clone, not a source code archive (see [Limits](#limits)).
+- Only the workflow creates release tags. Nobody tags a release by hand. The API refuses to create a tag that already exists, so a run never moves one.
 - The `release` job only releases from the newest run, because a newer run releases the same changes. That also stops a re-run of an older run tagging an older commit.
-- When the repository is public, the job also attests the zips' build provenance with [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance), so users can check them with `gh attestation verify`. GitHub doesn't offer attestations for private repositories on this plan, so the step is skipped until then.
 
 ## The .NET runtime
 
-Every package comes in two builds, so users and IT teams can choose:
+`build.ps1` makes every package in two builds, so users and IT teams can choose:
 
 | Build | Zip | MSIX bundle | Size of a zip |
 | --- | --- | --- | --- |
@@ -67,15 +68,15 @@ Every package comes in two builds, so users and IT teams can choose:
 
 The framework-dependent build carries the app, not .NET. It runs on the .NET 10 Desktop Runtime (`Microsoft.WindowsDesktop.App`) installed on the machine, for the same architecture as the build: x64 for `win-x64`, Arm64 for `win-arm64`. Install it with `winget install Microsoft.DotNet.DesktopRuntime.10`, or from the .NET download page. Without it the app doesn't start, and .NET says which runtime it needs. The .NET SDK includes the runtime, so a machine with the SDK already has it.
 
-The self-contained build carries its own copy of the runtime, for machines where the runtime can't be installed. Nothing patches that copy except a new release of the app, so prefer the framework-dependent build wherever the runtime can be installed.
+The self-contained build carries its own copy of the runtime, for machines where the runtime can't be installed. Nothing patches that copy except a new build of the app, with a patched SDK, so prefer the framework-dependent build wherever the runtime can be installed.
 
-- **Patches:** the framework-dependent build uses the newest 10.0 patch installed, so a patched runtime applies from the app's next start, without a new release of the app.
+- **Patches:** the framework-dependent build uses the newest 10.0 patch installed, so a patched runtime applies from the app's next start, without a new build of the app.
 - **Microsoft Update, not Windows Update:** Microsoft ships .NET's security and other fixes through Microsoft Update. Client Windows gets them through Automatic Updates. IT teams can use WSUS or the Microsoft Update Catalog instead. Windows Server only gets them through Automatic Updates after a registry opt-in. A `BlockMU` registry value stops these updates. Windows Update itself only services .NET Framework.
 - **MSIX:** an MSIX package can't declare a dependency on the .NET runtime, so App Installer and Intune install the framework-dependent bundle whether the runtime is there or not. Deploy the runtime first, such as with its own Intune app. Both bundles have the same package identity, so a machine has one or the other installed.
 
 ## MSIX bundles built from source
 
-CI and the release workflow build only the unsigned zips. An organisation that wants an MSIX package, such as to deploy the app with Intune, builds one from source and signs it with its own certificate:
+CI builds only the unsigned zips, and releases have no packages. An organisation that wants an MSIX package, such as to deploy the app with Intune, builds one from source and signs it with its own certificate:
 
 ```powershell
 ./build.ps1 -Msix -CertificateThumbprint <thumbprint> -TimestampUrl <rfc3161-url>
@@ -98,35 +99,37 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 
 ## Security
 
-- The workflow's token can only read the repository, except in the `release` job, which has `contents: write` to create the release and its tag, `actions: read` to list the workflow's runs, and `id-token: write` and `attestations: write` for the attestation. That job has no checkout and runs no repository code.
+- The workflow's token can only read the repository, except in the `release` job, which has `contents: write` to create the tag, and `actions: read` to list the workflow's runs. That job has no checkout, runs no repository code and uses no actions, only `gh` on the runner.
 - The `ci` job also allows `pull-requests: write` and `actions: read`, because GitHub checks a called workflow's permissions before it starts, and CI's code review asks for them. The review is skipped on a push, CI's build job still gets only `contents: read`, and no secrets are passed (see [CI](ci.md#security)).
-- The release publishes exactly the packages CI built, after `sha256sum --check` confirms they match the checksums written by the same build.
-- Every action is pinned to a full commit SHA, with its version in a comment. Dependabot updates them.
+- A release is a tag, with no build output, so no binary reaches users through a release. Users build from the tagged source on their own machines.
 
 ## Decisions
 
-- **The build in CI, the release here.** The job that can write to the repository only publishes what CI built, so no repository code runs with that token.
+- **The build in CI, the release here.** The job that can write to the repository only tags a commit CI has built and tested, so no repository code runs with that token.
 - **GitVersion, not commitizen.** It runs on the Windows runner as a pinned .NET local tool, and `build.ps1` already uses it to stamp the binaries.
 - **No release without a bump.** A run whose commits don't bump the version releases nothing, rather than a patch.
-- **Unsigned for now.** Releases are published with SHA-256 checksums but without Authenticode signatures, until the project has a code signing certificate. `build.ps1` can still sign a local build with `-CertificateThumbprint`.
-- **Zips in CI, MSIX from source.** An MSIX package has to be signed, and the project keeps no signing certificate in GitHub, so CI and releases stay with unsigned zips. `build.ps1 -Msix` lets an organisation build a bundle signed with its own certificate, with the publisher that certificate names.
-- **Both builds, framework-dependent first.** A self-contained build carries its own copy of .NET, which only a new release of the app can patch. A framework-dependent build runs on the machine's runtime, which Microsoft Update patches as soon as Microsoft ships a fix, and IT can see and manage it like any other Microsoft product. Its cost is a prerequisite, so the self-contained build stays available for machines where the runtime can't be installed, under a name that says what it is.
+- **Tags only, for now.** A release is a `v` tag, with no GitHub release and no packages, and users build the app themselves from the tag with `build.ps1`. A GitHub release would add only notes and a place for binaries, which the project doesn't ship. Its source code archives are the same ones the Tags page offers for every tag, and `build.ps1` can't build from them. The project has no code signing certificate, so it ships no binaries yet. `build.ps1` can still sign a local build with `-CertificateThumbprint`. This may change by 1.0.0.
+- **MSIX from source.** An MSIX package has to be signed, and the project keeps no signing certificate in GitHub, so CI builds only unsigned zips. `build.ps1 -Msix` lets an organisation build a bundle signed with its own certificate, with the publisher that certificate names.
+- **Both builds, framework-dependent first.** A self-contained build carries its own copy of .NET, which only a new build of the app, with a patched SDK, can patch. A framework-dependent build runs on the machine's runtime, which Microsoft Update patches as soon as Microsoft ships a fix, and IT can see and manage it like any other Microsoft product. Its cost is a prerequisite, so the self-contained build stays available for machines where the runtime can't be installed, under a name that says what it is.
 - **One bundle, not one package per runtime.** A single `.msixbundle` holds the `x64` and `arm64` packages, and Windows installs the one that matches the machine.
 - **Full trust, not an AppContainer.** An `appContainer` app, such as one under Win32 app isolation, would reach less, but Windows blocks loopback connections to packaged apps by default. Letting an unpackaged client, such as WSL's traffic, connect would need `CheckNetIsolation.exe LoopbackExempt -is` running the whole time, with administrator rights, and Microsoft supports that only for sideloading and debugging. Accepting connections on `127.0.0.1` is the relay's whole job.
 
 ## Limits
 
-- The binaries aren't code-signed, so Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block them, and SmartScreen warns on first run.
+- A build isn't code-signed unless whoever builds it signs it with `-CertificateThumbprint`, so Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block it.
+- `build.ps1` needs a Git clone. In a source code archive from the Tags page, which has no Git history, GitVersion can't work out the version and the script fails (observed).
+- Tags up to `v0.11.0` were made before `GitVersion.yaml` set `prevent-increment` for a detached HEAD, so a build from one of them is stamped with a pre-release version, such as `0.11.1--no-branch-.1` for `v0.11.0` (observed). The next tag is the first to build with its own version.
 - The tags the workflow creates aren't signed.
-- Releases are only immutable once the repository's release immutability setting is turned on.
-- Releases don't include an MSIX bundle. CI never runs `build.ps1 -Msix`, so a change that breaks the MSIX build isn't caught until someone builds one.
+- Anyone who can push to the repository can delete or move a tag, unless a tag ruleset protects `v*` tags.
+- CI never runs `build.ps1 -Msix`, so a change that breaks the MSIX build isn't caught until someone builds one.
 
 ## Sources
 
 - https://gitversion.net/docs/
 - https://docs.github.com/en/actions/sharing-automations/reusing-workflows
-- https://cli.github.com/manual/gh_release_create
-- https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations
+- https://docs.github.com/en/rest/git/tags
+- https://docs.github.com/en/rest/git/refs
+- https://gitversion.net/docs/reference/configuration
 - https://learn.microsoft.com/en-us/windows/wsl/networking
 - https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool
 - https://learn.microsoft.com/en-us/windows/msix/package/sign-app-package-using-signtool

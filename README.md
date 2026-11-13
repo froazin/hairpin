@@ -15,7 +15,7 @@ WSL Proxy Relay is a per-user Windows tray app that runs a local HTTP proxy on `
 
 ## Using it
 
-The [wiki](https://github.com/froazin/wsl-proxy-relay/wiki) is the user guide. Start with [Installing](https://github.com/froazin/wsl-proxy-relay/wiki/Installing) and [Setting up WSL](https://github.com/froazin/wsl-proxy-relay/wiki/Setting-up-WSL), and see [Troubleshooting](https://github.com/froazin/wsl-proxy-relay/wiki/Troubleshooting) if requests from WSL hang. Download the app from [Releases](https://github.com/froazin/wsl-proxy-relay/releases). It's in early development, so expect changes between releases.
+The [wiki](https://github.com/froazin/wsl-proxy-relay/wiki) is the user guide. Start with [Installing](https://github.com/froazin/wsl-proxy-relay/wiki/Installing) and [Setting up WSL](https://github.com/froazin/wsl-proxy-relay/wiki/Setting-up-WSL), and see [Troubleshooting](https://github.com/froazin/wsl-proxy-relay/wiki/Troubleshooting) if requests from WSL hang. Releases are [tags](https://github.com/froazin/wsl-proxy-relay/tags), with no packages, so build the app from source, as Installing describes. It's in early development, so expect changes between releases.
 
 ## Why
 
@@ -23,7 +23,7 @@ In mirrored mode, endpoint network agents can't deliver replies to connections t
 
 ## For engineers
 
-WSLProxyRelay.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages, and each release comes in two builds: one that runs on the .NET 10 Desktop Runtime installed on the machine, which Microsoft Update keeps patched, and one that carries its own runtime ([Docs/releases.md](Docs/releases.md#the-net-runtime)).
+WSLProxyRelay.exe is one .NET 10 process: a WPF tray UI and a hand-written HTTP forward proxy, hosted together in a Generic Host. Its only dependencies are Microsoft packages, and `build.ps1` makes it in two builds: one that runs on the .NET 10 Desktop Runtime installed on the machine, which Microsoft Update keeps patched, and one that carries its own runtime ([Docs/releases.md](Docs/releases.md#the-net-runtime)).
 
 ```mermaid
 flowchart LR

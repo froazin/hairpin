@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   # The same build and tests as on a pull request, so a push straight to main is checked too, and a failed check
-  # releases nothing. It also builds the packages this workflow publishes and works out their version.
+  # releases nothing. It also works out the version and whether a release is due.
   # GitHub checks a called workflow's permissions before the run starts, even for a job that's skipped, so this allows
   # what CI's code review asks for. The review only runs on a pull request, so it's skipped here, and CI's build job
   # still only gets contents: read. No secrets are passed.
@@ -39,20 +39,18 @@ jobs:
       contents: read
       pull-requests: write
 
-  # The only job that can write to the repository, so it runs no repository code: it has no checkout, and only publishes
-  # the packages the CI build made, after checking their hashes. gh release create tags the commit the run came from.
+  # The only job that can write to the repository, so it runs no repository code: it has no checkout. A release is only
+  # a vX.Y.Z tag on the commit the run came from, with no GitHub release and no packages: users clone the tag and build
+  # the app from source.
   release:
-    name: Release
+    name: Tag the release
     needs: ci
     if: needs.ci.outputs.release-due == 'true'
     runs-on: ubuntu-26.04
-    # actions: read to find the newest run of this workflow. id-token and attestations to attest the packages' build
-    # provenance, which GitHub offers for public repositories.
+    # actions: read to find the newest run of this workflow.
     permissions:
       actions: read
-      attestations: write
       contents: write
-      id-token: write
     steps:
       # A newer run releases this commit's changes too, so only the newest run releases. That also stops a re-run of an
       # older run tagging an older commit.
@@ -69,42 +67,15 @@ jobs:
             echo "newest=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download the packages
-        if: steps.newest.outputs.newest == 'true'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: packages
-          path: dist
-
-      - name: Check the hashes
-        if: steps.newest.outputs.newest == 'true'
-        working-directory: dist
-        run: sha256sum --check --strict SHA256SUMS.txt
-
-      - name: Attest the build provenance
-        if: steps.newest.outputs.newest == 'true' && github.event.repository.visibility == 'public'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          subject-path: dist/*.zip
-
-      # The packages aren't signed yet: the release says so, and SHA256SUMS.txt lets users check what they downloaded.
-      # Each runtime has a zip that needs .NET installed and a self-contained one, so the notes say which is which.
-      - name: Create the release
+      # An annotated tag, so it records who made it and when. The API makes the tag object first, then the ref that
+      # points to it. Creating the ref fails if the tag already exists, so a release is never moved.
+      - name: Create the tag
         if: steps.newest.outputs.newest == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.ci.outputs.version }}
         run: |
-          notes="$RUNNER_TEMP/notes.md"
-          printf '%s\n' \
-            '> [!IMPORTANT]' \
-            '> These builds are not code-signed. Check each zip against `SHA256SUMS.txt` before you run it.' \
-            '' \
-            'Each architecture has two zips:' \
-            '' \
-            '- `WSLProxyRelay-<version>-<runtime>.zip` (recommended) needs the .NET 10 Desktop Runtime for the same' \
-            '  architecture, which Microsoft Update keeps patched: `winget install Microsoft.DotNet.DesktopRuntime.10`.' \
-            '- `WSLProxyRelay-<version>-<runtime>-self-contained.zip` carries its own copy of .NET, which only a new' \
-            '  release patches. Use it where the runtime can'"'"'t be installed.' > "$notes"
-          gh release create "$TAG" dist/*.zip dist/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "$TAG" --notes-file "$notes" --generate-notes
+          object=$(gh api "repos/$GITHUB_REPOSITORY/git/tags" -f tag="$TAG" -f message="Release $TAG" \
+            -f object="$GITHUB_SHA" -f type=commit --jq .sha)
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$object" --silent
+          echo "::notice title=Release::Tagged $GITHUB_SHA as $TAG."
