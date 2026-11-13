@@ -88,7 +88,7 @@ jobs:
           subject-path: dist/*.zip
 
       # The packages aren't signed yet: the release says so, and SHA256SUMS.txt lets users check what they downloaded.
-      # They don't carry .NET either, so the notes say which runtime to install.
+      # Each runtime has a zip that needs .NET installed and a self-contained one, so the notes say which is which.
       - name: Create the release
         if: steps.newest.outputs.newest == 'true'
         env:
@@ -99,8 +99,12 @@ jobs:
           printf '%s\n' \
             '> [!IMPORTANT]' \
             '> These builds are not code-signed. Check each zip against `SHA256SUMS.txt` before you run it.' \
-            '>' \
-            '> They need the .NET 10 Desktop Runtime for the same architecture, which Microsoft Update keeps patched:' \
-            '> `winget install Microsoft.DotNet.DesktopRuntime.10`.' > "$notes"
+            '' \
+            'Each architecture has two zips:' \
+            '' \
+            '- `WSLProxyRelay-<version>-<runtime>.zip` (recommended) needs the .NET 10 Desktop Runtime for the same' \
+            '  architecture, which Microsoft Update keeps patched: `winget install Microsoft.DotNet.DesktopRuntime.10`.' \
+            '- `WSLProxyRelay-<version>-<runtime>-self-contained.zip` carries its own copy of .NET, which only a new' \
+            '  release patches. Use it where the runtime can'"'"'t be installed.' > "$notes"
           gh release create "$TAG" dist/*.zip dist/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "$TAG" --notes-file "$notes" --generate-notes
