@@ -91,7 +91,7 @@ WSL falls back to NAT when:
 - `.wslconfig` sets `firewall=false`.
 - The Linux kernel is older than 5.10, or a policy pins another mode.
 
-So WSL can only reach the relay on a host where IPv6 is enabled. Mirrored mode needs IPv6, but the host doesn't have to use it. The minimal configuration that keeps mirrored mode working while using IPv6 only where it's needed, in line with the Windows 11 CIS benchmark's aim:
+So WSL can't reach the relay on a host where IPv6 is disabled with `DisabledComponents` set to `0xFF`. Mirrored mode needs IPv6, but the host doesn't have to use it. The minimal configuration that keeps mirrored mode working while using IPv6 only where it's needed, in line with the Windows 11 CIS benchmark's aim:
 
 1. Set `DisabledComponents` to `0x20`: IPv6 stays enabled, and Windows prefers IPv4.
 1. Unbind IPv6 from each network adapter with `Disable-NetAdapterBinding -Name <adapter> -ComponentID ms_tcpip6`. The WSL source notes that disabling IPv6 this way is supported.
