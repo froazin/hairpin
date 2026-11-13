@@ -137,15 +137,15 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock x:Name="OpenText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="Open" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                        <TextBlock Text="Conn" ToolTip="Client connections open now" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                         <TextBlock x:Name="RequestsText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="Requests/min" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                        <TextBlock Text="Req/m" ToolTip="Requests in the last minute" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     </StackPanel>
                     <StackPanel Grid.Column="2">
-                        <TextBlock x:Name="ErrorsText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="Errors" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
+                        <TextBlock x:Name="ErrorRateText" Style="{DynamicResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="Err%" ToolTip="Requests in the last 2 minutes that ended in an error" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{DynamicResource CaptionTextBlockStyle}" />
                     </StackPanel>
                 </Grid>
                 <TextBlock x:Name="TotalsText" Margin="0,8,0,0" TextWrapping="Wrap"
