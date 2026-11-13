@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using WSLProxy.Relay.Status;
+using WSLProxy.UI.Diagnostics;
 using static WSLProxy.UI.Interop.NativeMethods;
 
 namespace WSLProxy.UI.Views;
@@ -150,6 +151,14 @@ public partial class FlyoutWindow : Window
         var paused = snapshot.State == RelayState.Paused;
         PauseText.Text = paused ? "Resume" : "Pause";
         PauseGlyph.Text = ((char)(paused ? 0xE768 : 0xE769)).ToString(); // Segoe Fluent Icons: Play, Pause.
+    }
+
+    /// <summary>Shows the settings that stop mirrored mode, or hides the list when there are none.</summary>
+    public void SetProblems(IReadOnlyList<ConfigProblem> problems)
+    {
+        ArgumentNullException.ThrowIfNull(problems);
+        ProblemsList.ItemsSource = problems;
+        ProblemsList.Visibility = problems.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>Shows whether debug logging is on.</summary>

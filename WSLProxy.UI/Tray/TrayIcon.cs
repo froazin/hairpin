@@ -26,7 +26,8 @@ public sealed class TrayIcon : IDisposable
     private readonly uint _taskbarCreatedMessage;
     private readonly Dictionary<Glyph, byte[]> _iconFiles;
     private IntPtr _icon;
-    private (Glyph Glyph, int Size) _current;
+    private (Glyph Glyph, int Size, bool Badge) _current;
+    private bool _badge;
     private string _tooltip = "WSL Proxy Relay";
     private bool _added;
     private bool _disposed;
@@ -69,6 +70,16 @@ public sealed class TrayIcon : IDisposable
         }
     }
 
+    /// <summary>Shows or hides a small red X on the icon, which says a setting needs fixing.</summary>
+    public void SetBadge(bool show)
+    {
+        _badge = show;
+        if (!_disposed)
+        {
+            Refresh(force: false);
+        }
+    }
+
     /// <summary>Gets the icon's rectangle in physical pixels, or null when the shell can't say.</summary>
     public Rect? GetIconRect()
     {
@@ -107,15 +118,28 @@ public sealed class TrayIcon : IDisposable
         var luma = TrayGlyph.Luma(SystemColors.WindowColor.R, SystemColors.WindowColor.G, SystemColors.WindowColor.B);
         var glyph = TrayGlyph.Choose(SystemParameters.HighContrast, luma, TrayGlyph.ReadSystemUsesLightTheme());
         var size = SmallIconSize();
-        if (!force && _added && (glyph, size) == _current)
+        if (!force && _added && (glyph, size, _badge) == _current)
         {
             return;
         }
 
         var icon = CreateIcon(_iconFiles[glyph], size);
+        if (_badge)
+        {
+            var plain = icon;
+            try
+            {
+                icon = TrayBadge.Compose(plain, size);
+            }
+            finally
+            {
+                DestroyIcon(plain);
+            }
+        }
+
         var old = _icon;
         _icon = icon;
-        _current = (glyph, size);
+        _current = (glyph, size, _badge);
         if (force || !_added)
         {
             // If the shell still has the icon (TaskbarCreated also fires on a DPI change), NIM_ADD fails: update it instead.
@@ -281,5 +305,37 @@ public static class IconFile
         }
 
         return best is { } b ? (b.Offset, b.Length) : throw new InvalidDataException("The icon file has no usable image.");
+    }
+
+    /// <summary>
+    /// Builds an icon image, as <c>CreateIconFromResourceEx</c> reads it, from square 32-bit BGRA pixels with straight alpha,
+    /// top row first: a <c>BITMAPINFOHEADER</c> with double the height, the pixels bottom row first, then an empty AND mask,
+    /// because the alpha channel does its job.
+    /// </summary>
+    public static byte[] FromBgra(ReadOnlySpan<byte> pixels, int size)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
+        var stride = size * 4;
+        if (pixels.Length != stride * size)
+        {
+            throw new ArgumentException("Expected " + (stride * size) + " bytes of pixels.", nameof(pixels));
+        }
+
+        const int headerSize = 40;
+        var maskStride = ((size + 31) / 32) * 4;
+        var image = new byte[headerSize + pixels.Length + (maskStride * size)];
+        var header = image.AsSpan(0, headerSize);
+        BitConverter.TryWriteBytes(header[0..4], headerSize);
+        BitConverter.TryWriteBytes(header[4..8], size);
+        BitConverter.TryWriteBytes(header[8..12], size * 2);
+        BitConverter.TryWriteBytes(header[12..14], (ushort)1);
+        BitConverter.TryWriteBytes(header[14..16], (ushort)32);
+        BitConverter.TryWriteBytes(header[20..24], pixels.Length + (maskStride * size));
+        for (var row = 0; row < size; row++)
+        {
+            pixels.Slice(row * stride, stride).CopyTo(image.AsSpan(headerSize + ((size - 1 - row) * stride), stride));
+        }
+
+        return image;
     }
 }
