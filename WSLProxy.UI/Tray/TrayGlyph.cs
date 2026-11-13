@@ -5,10 +5,10 @@ namespace WSLProxy.UI.Tray;
 /// <summary>Which tray glyph to show.</summary>
 public enum Glyph
 {
-    /// <summary>The dark glyph, for a light taskbar.</summary>
+    /// <summary>The glyph for a light taskbar, drawn in a dark colour.</summary>
     LightTheme,
 
-    /// <summary>The light glyph, for a dark taskbar.</summary>
+    /// <summary>The glyph for a dark taskbar, drawn in a light colour.</summary>
     DarkTheme,
 }
 
@@ -19,7 +19,7 @@ public static class TrayGlyph
 
     /// <summary>
     /// Chooses the glyph. The taskbar follows <c>SystemUsesLightTheme</c>, not the apps' theme, so a "Custom" Windows theme with a
-    /// dark taskbar and light apps still gets the dark theme glyph. A missing value means dark, as Windows treats it. Under high
+    /// dark taskbar and light apps still gets the glyph for a dark taskbar. A missing value means dark, as Windows treats it. Under high
     /// contrast the theme values don't describe the taskbar, so the glyph contrasts with the high-contrast window colour instead.
     /// </summary>
     /// <param name="highContrast">True when high contrast is on.</param>
