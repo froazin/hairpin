@@ -207,11 +207,11 @@ internal sealed class TrafficCounters
 
     public void AddDown(int count) => Interlocked.Add(ref _bytesDown, count);
 
-    /// <summary>Counts a finished request by its route.</summary>
+    /// <summary>Counts a request whose response reached the client, by its route.</summary>
     public void Completed(Routing.RouteKind route) => Interlocked.Increment(ref route == Routing.RouteKind.Upstream ? ref _upstream : ref _direct);
 
-    /// <summary>Counts a request the relay answered with its own error, such as a refusal or a failed connection.</summary>
-    public void Refused() => Interlocked.Increment(ref _errors);
+    /// <summary>Counts a request the relay answered with its own error, such as a refusal or a failed connection, or whose response broke off.</summary>
+    public void Error() => Interlocked.Increment(ref _errors);
 
     public Status.RelayCounters Read(long requests, int activeConnections) => new(
         requests,

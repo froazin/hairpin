@@ -77,9 +77,9 @@ public interface IRelayControl
 
 /// <summary>Traffic totals since the relay started, for the metrics panel. Every value only grows, apart from the open connections.</summary>
 /// <param name="Requests">Requests handled, CONNECT tunnels included.</param>
-/// <param name="DirectRequests">Requests that finished on the direct route.</param>
-/// <param name="UpstreamRequests">Requests that finished through the upstream proxy.</param>
-/// <param name="Errors">Requests the relay answered with its own error, such as a refusal, a failed connection or a timeout.</param>
+/// <param name="DirectRequests">Requests whose response reached the client on the direct route.</param>
+/// <param name="UpstreamRequests">Requests whose response reached the client through the upstream proxy.</param>
+/// <param name="Errors">Requests the relay answered with its own error, such as a refusal, a failed connection or a timeout, or whose response broke off part way.</param>
 /// <param name="BytesUp">Bytes sent towards servers: request bodies and tunnel data, not message heads.</param>
 /// <param name="BytesDown">Bytes sent back to clients: response bodies and tunnel data, not message heads.</param>
 /// <param name="ActiveConnections">Client connections open now.</param>

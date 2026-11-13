@@ -162,8 +162,15 @@ public sealed class RelayIntegrationTests
         await stream.ReadExactlyAsync(reply, cts.Token);
         Assert.AreEqual("ping", Encoding.ASCII.GetString(reply));
 
-        // Counted while the tunnel is still open, not only when it closes.
+        // Counted while the tunnel is still open, not only when it closes. The relay adds each count just after its write
+        // completes, so give its thread a moment.
         var live = relay.Service.Read();
+        while ((live.BytesUp < 4 || live.BytesDown < 4) && !cts.IsCancellationRequested)
+        {
+            await Task.Delay(10, cts.Token);
+            live = relay.Service.Read();
+        }
+
         Assert.AreEqual(4, live.BytesUp);
         Assert.AreEqual(4, live.BytesDown);
         Assert.AreEqual(1, live.ActiveConnections);
