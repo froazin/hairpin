@@ -78,7 +78,8 @@ public sealed record UserSettings(
 }
 
 /// <summary>
-/// Reads and writes the user's settings file, <c>%LOCALAPPDATA%\WSLProxy\settings.json</c>. Configuration layers it over
+/// Reads and writes the user's settings file at the path it's given: <c>settings.json</c> in the data folder Program picks,
+/// <c>%LOCALAPPDATA%\WSLProxy</c> for the zip build or the package's <c>LocalState</c> folder for the MSIX package. Configuration layers it over
 /// <c>appsettings.json</c> and reloads it when it changes, so saving here applies the settings live.
 /// </summary>
 /// <param name="path">The settings file's path.</param>

@@ -12,6 +12,7 @@ using WSLProxy.Relay.Configuration;
 using WSLProxy.Relay.Status;
 using WSLProxy.UI;
 using WSLProxy.UI.Diagnostics;
+using WSLProxy.UI.Interop;
 using WSLProxy.UI.Settings;
 
 namespace WSLProxy.App;
@@ -27,11 +28,15 @@ public static partial class Program
 
     private static string _dataDirectory = string.Empty;
 
+    // Null for the zip build; the package family name when the app runs from its MSIX package.
+    private static string? _packageFamilyName;
+
     /// <summary>Starts the relay and the tray UI, and runs until the user quits.</summary>
     [STAThread]
     public static int Main(string[] args)
     {
-        _dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WSLProxy");
+        _packageFamilyName = PackageIdentity.FamilyName();
+        _dataDirectory = DataDirectory(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), _packageFamilyName);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => RecordCrash(e.ExceptionObject as Exception);
         try
         {
@@ -122,9 +127,11 @@ public static partial class Program
         builder.Services.AddSingleton(new UserSettingsStore(settingsFile));
         builder.Services.AddSingleton(_ => new ConfigChecker(
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wslconfig")));
-        builder.Services.AddSingleton(new StartupRegistration(
-            Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "WSLProxyRelay.exe"),
-            enabled: IsReleaseBuild));
+        builder.Services.AddSingleton(_packageFamilyName is not null
+            ? StartupRegistration.ForPackage()
+            : new StartupRegistration(
+                Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "WSLProxyRelay.exe"),
+                enabled: IsReleaseBuild));
         builder.Services.AddSingleton(sp => new TrayApplication(
             sp.GetRequiredService<IRelayStatus>(),
             sp.GetRequiredService<IRelayControl>(),
@@ -148,7 +155,8 @@ public static partial class Program
 
         host.Start();
 
-        // Development builds never touch the start-at-sign-in entry (StartupRegistration is disabled in Debug).
+        // Development builds never touch the start-at-sign-in entry (StartupRegistration is disabled in Debug), and nor
+        // does the MSIX package, whose startup task starts it instead.
         var startAtLogin = host.Services.GetRequiredService<IOptionsMonitor<AppOptions>>().CurrentValue.StartAtLogin;
         if (!host.Services.GetRequiredService<StartupRegistration>().ApplyAtLaunch(startAtLogin))
         {
@@ -164,6 +172,16 @@ public static partial class Program
         host.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
         return exitCode;
     }
+
+    /// <summary>
+    /// The folder for settings.json, the logs and crash.log: <c>%LOCALAPPDATA%\WSLProxy</c> for the zip build, or the
+    /// package's own <c>LocalState</c> folder when the app runs from its MSIX package. Windows redirects a packaged app's
+    /// new files elsewhere under <c>%LOCALAPPDATA%</c> to a private location Explorer can't see, but not its own folder.
+    /// </summary>
+    internal static string DataDirectory(string localAppData, string? packageFamilyName) =>
+        packageFamilyName is null
+            ? Path.Combine(localAppData, "WSLProxy")
+            : Path.Combine(localAppData, "Packages", packageFamilyName, "LocalState");
 
     /// <summary>
     /// Renames a settings file that isn't valid JSON to <c>settings.json.invalid-&lt;time&gt;</c>, so the app starts with its

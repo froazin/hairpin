@@ -121,9 +121,13 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Startup. -->
+                <!-- Startup. When the app runs from its MSIX package, Windows manages it and the hint says where. -->
                 <Border Style="{StaticResource Card}">
-                    <CheckBox x:Name="StartAtLoginBox" Content="Start WSL Proxy Relay when I sign in to Windows" />
+                    <StackPanel>
+                        <CheckBox x:Name="StartAtLoginBox" Content="Start WSL Proxy Relay when I sign in to Windows" />
+                        <TextBlock x:Name="StartupHint" Style="{StaticResource Hint}" Margin="0" Visibility="Collapsed"
+                                   Text="Windows starts WSL Proxy Relay when you sign in. Turn that on or off in Settings &gt; Apps &gt; Startup, or in Task Manager's Startup apps." />
+                    </StackPanel>
                 </Border>
 
                 <!-- Troubleshooting: acts straight away, so Save and Cancel don't apply. -->

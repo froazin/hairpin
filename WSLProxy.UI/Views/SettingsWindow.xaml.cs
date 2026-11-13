@@ -11,6 +11,7 @@ public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<string> _entries;
     private readonly Func<UserSettings, IReadOnlyList<string>> _save;
+    private readonly bool _startAtLogin;
 
     /// <summary>Creates the window showing <paramref name="current"/>. <paramref name="save"/> validates and saves, returning any problems.</summary>
     public SettingsWindow(UserSettings current, Func<UserSettings, IReadOnlyList<string>> save)
@@ -18,6 +19,7 @@ public partial class SettingsWindow : Window
         ArgumentNullException.ThrowIfNull(current);
         InitializeComponent();
         _save = save;
+        _startAtLogin = current.StartAtLogin;
         _entries = [.. current.NoProxy];
         EntriesList.ItemsSource = _entries;
         HttpHostBox.Text = current.HttpProxyHost;
@@ -34,6 +36,18 @@ public partial class SettingsWindow : Window
 
     /// <summary>Raised when the user turns debug logging on (true) or off (false). It applies straight away, without Save.</summary>
     public event EventHandler<bool>? DebugLoggingRequested;
+
+    /// <summary>
+    /// Hides the start-at-sign-in box and says where Windows manages it instead, for the app installed from its MSIX
+    /// package. The app can't read the package's startup task without WinRT, so it doesn't show a box it can't fill in.
+    /// The box is also disabled, so saving keeps the stored value.
+    /// </summary>
+    public void ShowStartupManagedByWindows()
+    {
+        StartAtLoginBox.IsEnabled = false;
+        StartAtLoginBox.Visibility = Visibility.Collapsed;
+        StartupHint.Visibility = Visibility.Visible;
+    }
 
     /// <summary>Shows whether debug logging is on.</summary>
     public void SetDebugLogging(bool enabled) => DebugBox.IsChecked = enabled;
@@ -112,7 +126,7 @@ public partial class SettingsWindow : Window
             httpsPortEmpty ? null : httpsPort,
             [.. _entries],
             DenyLocalBox.IsChecked == true,
-            StartAtLoginBox.IsChecked == true);
+            StartAtLoginBox.IsEnabled ? StartAtLoginBox.IsChecked == true : _startAtLogin);
         var problems = _save(settings);
         if (problems.Count > 0)
         {

@@ -31,6 +31,7 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 | Full build: version, test, publish and checksums | `./build.ps1` |
 | Full build without tests | `./build.ps1 -SkipTests` |
 | Sign the binaries too | `./build.ps1 -CertificateThumbprint <thumbprint> -TimestampUrl <rfc3161-url>` |
+| Build a signed MSIX bundle instead of the zips | `./build.ps1 -Msix -CertificateThumbprint <thumbprint> -TimestampUrl <rfc3161-url>` |
 
 `build.ps1` runs in Windows PowerShell 5.1 or PowerShell 7. It writes to `Artifacts/`:
 
@@ -39,6 +40,23 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 - `SHA256SUMS.txt`: a SHA-256 checksum for each zip, in `sha256sum` format.
 
 Signing needs `signtool.exe` from the Windows SDK and a code signing certificate in your certificate store. Without a thumbprint, the script warns and leaves the binaries unsigned.
+
+With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundle. It also needs `makeappx.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
+
+### A test certificate for MSIX
+
+To test the MSIX build without a real code signing certificate, make a self-signed one in Windows PowerShell 5.1:
+
+```powershell
+$cert = New-SelfSignedCertificate -Type Custom -KeyUsage DigitalSignature -CertStoreLocation Cert:\CurrentUser\My -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}") -Subject "CN=<publisher-name>"
+$cert.Thumbprint
+Export-Certificate -Cert $cert -FilePath <path>\wslproxy-test.cer
+```
+
+- Pass the thumbprint to `build.ps1` with `-CertificateThumbprint`. Signing still needs `-TimestampUrl`, so give it any RFC 3161 timestamp server.
+- Don't add the test certificate to a Trusted Root store: that would trust anything signed with its key. `build.ps1` sees that the certificate is self-signed and skips `signtool verify`, which needs a trusted root, with a warning.
+- To install the bundle on a test machine, trust the certificate there from an elevated session: `Import-Certificate -FilePath <path>\wslproxy-test.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`.
+- Remove the certificate from each store when you've finished testing. Never use a self-signed certificate for a package you give to anyone else.
 
 Windows Application Control (Smart App Control, App Control for Business or AppLocker) can block unsigned executables, and does so unpredictably for new builds (observed). The test project builds no `.exe` for this reason: tests run through the signed `dotnet` host. Releases aren't code-signed yet, so they can be blocked too.
 

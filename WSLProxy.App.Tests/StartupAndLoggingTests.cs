@@ -25,6 +25,12 @@ public sealed class StartupAndLoggingTests
     public void DeleteDirectory() => Directory.Delete(_directory, recursive: true);
 
     [TestMethod]
+    [DataRow(null, @"C:\Users\someone\AppData\Local\WSLProxy", DisplayName = "Zip build")]
+    [DataRow("WSLProxyRelay_1a2b3c4d5e6f7", @"C:\Users\someone\AppData\Local\Packages\WSLProxyRelay_1a2b3c4d5e6f7\LocalState", DisplayName = "MSIX package")]
+    public void The_packaged_app_keeps_its_files_in_its_package_folder_and_the_zip_build_in_its_own(string? familyName, string expected) =>
+        Assert.AreEqual(expected, Program.DataDirectory(@"C:\Users\someone\AppData\Local", familyName));
+
+    [TestMethod]
     [DataRow("{ \"Relay\": { \"ListenPort\": 3129, }, // A trailing comma and a comment are fine\n}", false)]
     [DataRow("{ \"Relay\": { \"ListenPort\": ", true)]
     [DataRow(null, false, DisplayName = "No file")]

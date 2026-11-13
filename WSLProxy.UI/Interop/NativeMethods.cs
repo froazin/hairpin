@@ -178,4 +178,12 @@ internal static partial class NativeMethods
 
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    public const int ERROR_SUCCESS = 0;
+
+    /// <summary>PACKAGE_FAMILY_NAME_MAX_LENGTH (64) plus the terminating null.</summary>
+    public const int PackageFamilyNameBufferLength = 65;
+
+    [LibraryImport("kernel32.dll")]
+    public static unsafe partial int GetCurrentPackageFamilyName(ref uint packageFamilyNameLength, char* packageFamilyName);
 }
