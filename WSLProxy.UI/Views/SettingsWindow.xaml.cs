@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
-using WSLProxy.Relay.Routing;
 using WSLProxy.UI.Settings;
 
 namespace WSLProxy.UI.Views;
@@ -58,28 +57,16 @@ public partial class SettingsWindow : Window
     /// <summary>Adds one entry, or several pasted as a no_proxy value separated by commas, semicolons or spaces.</summary>
     private void AddEntries()
     {
-        var problems = new List<string>();
-        var parts = NewEntryBox.Text.Split([',', ';', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-        var rejected = new List<string>();
-        foreach (var part in parts)
+        var input = BypassEntries.Read(NewEntryBox.Text, _entries);
+        foreach (var entry in input.Added)
         {
-            if (!NoProxyRule.TryParse(part, out var rule, out var error))
-            {
-                problems.Add(part + ": " + error);
-                rejected.Add(part);
-                continue;
-            }
-
-            if (!_entries.Any(e => NoProxyRule.TryParse(e, out var existing, out _) && existing.Normalised == rule.Normalised))
-            {
-                _entries.Add(rule.Normalised);
-            }
+            _entries.Add(entry);
         }
 
         // Keep anything that didn't parse in the box, so the user can fix it.
-        NewEntryBox.Text = string.Join(", ", rejected);
-        EntryProblemText.Text = string.Join(Environment.NewLine, problems);
-        EntryProblemText.Visibility = problems.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        NewEntryBox.Text = string.Join(", ", input.Rejected);
+        EntryProblemText.Text = string.Join(Environment.NewLine, input.Problems);
+        EntryProblemText.Visibility = input.Problems.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         NewEntryBox.Focus();
     }
 

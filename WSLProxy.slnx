@@ -5,7 +5,9 @@
     <Platform Name="ARM64" />
   </Configurations>
   <Project Path="WSLProxy.App/WSLProxy.App.csproj" />
+  <Project Path="WSLProxy.App.Tests/WSLProxy.App.Tests.csproj" />
   <Project Path="WSLProxy.Relay/WSLProxy.Relay.csproj" />
   <Project Path="WSLProxy.Relay.Tests/WSLProxy.Relay.Tests.csproj" />
   <Project Path="WSLProxy.UI/WSLProxy.UI.csproj" />
+  <Project Path="WSLProxy.UI.Tests/WSLProxy.UI.Tests.csproj" />
 </Solution>

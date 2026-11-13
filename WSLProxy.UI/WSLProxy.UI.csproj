@@ -18,6 +18,10 @@
     <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="WSLProxy.UI.Tests" />
+  </ItemGroup>
+
   <!-- Tray glyphs: black for a light taskbar, white for a dark one. -->
   <ItemGroup>
     <EmbeddedResource Include="..\Assets\wslproxy-black.ico" LogicalName="WSLProxy.UI.Tray.Black.ico" Link="Assets\wslproxy-black.ico" />

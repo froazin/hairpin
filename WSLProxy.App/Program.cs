@@ -155,7 +155,7 @@ public static partial class Program
     /// Renames a settings file that isn't valid JSON to <c>settings.json.invalid-&lt;time&gt;</c>, so the app starts with its
     /// defaults instead of failing at every start. Returns the new name, or null when the file was fine or missing.
     /// </summary>
-    private static string? SetAsideIfCorrupt(string settingsFile)
+    internal static string? SetAsideIfCorrupt(string settingsFile)
     {
         try
         {
