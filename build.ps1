@@ -7,16 +7,17 @@
     1. Restores the local .NET tools and works out the version with GitVersion.
     2. Restores packages in locked mode, so the committed lock files must match.
     3. Builds and tests the solution.
-    4. Publishes a self-contained folder for each runtime.
+    4. Publishes two folders for each runtime: a framework-dependent build, which needs the .NET 10 Desktop Runtime on
+       the machine, and a self-contained build, which carries its own runtime.
     5. Signs our own binaries with signtool, when a certificate thumbprint is given.
     6. Zips each folder and writes SHA256SUMS.txt next to the zips.
     7. Writes GitVersion's variables to version.json, for CI.
 
-    With -Msix, step 6 builds a signed MSIX bundle instead of the zips: it packs each signed folder with
-    Packaging/AppxManifest.xml and logos drawn from Assets/wslproxy-logo.svg at every size Windows asks for, indexed
-    with makepri, bundles the packages into one .msixbundle, signs the bundle and writes SHA256SUMS.txt for it. MSIX
-    mode needs the Windows SDK's makeappx.exe, makepri.exe and signtool.exe, and a code signing certificate whose
-    subject becomes the package's publisher.
+    With -Msix, step 6 builds two signed MSIX bundles instead of the zips, one for each build: it packs each signed
+    folder with Packaging/AppxManifest.xml and logos drawn from Assets/wslproxy-logo.svg at every size Windows asks
+    for, indexed with makepri, bundles each build's packages into one .msixbundle, signs the bundles and writes
+    SHA256SUMS.txt for them. MSIX mode needs the Windows SDK's makeappx.exe, makepri.exe and signtool.exe, and a code
+    signing certificate whose subject becomes the package's publisher.
 
     Output goes to Artifacts/.
 
@@ -37,8 +38,9 @@
     An RFC 3161 timestamp server. Required when signing.
 
 .PARAMETER Msix
-    Builds a signed MSIX bundle, WSLProxyRelay-<version>.msixbundle, instead of the zips. Needs
-    -CertificateThumbprint and -TimestampUrl, because Windows won't install an unsigned package.
+    Builds signed MSIX bundles instead of the zips: WSLProxyRelay-<version>.msixbundle, which needs the .NET 10
+    Desktop Runtime, and WSLProxyRelay-<version>-self-contained.msixbundle. Needs -CertificateThumbprint and
+    -TimestampUrl, because Windows won't install an unsigned package.
 
 .PARAMETER PublisherDisplayName
     The publisher name the MSIX package shows. Defaults to the certificate subject's common name.
@@ -386,12 +388,11 @@ if ($Msix) {
     # Package versions have four parts.
     $packageVersion = '{0}.{1}.{2}.0' -f $gitVersion.Major, $gitVersion.Minor, $gitVersion.Patch
     $msixDir = Join-Path $artifacts 'Msix'
-    $packagesDir = Join-Path $msixDir 'Packages'
     # The logos sit in Images under their own root, so makepri indexes only them, not the published files, whose
     # culture folders it would read as language qualifiers.
     $logosRoot = Join-Path $msixDir 'Logos'
     $logosDir = Join-Path $logosRoot 'Images'
-    New-Item $packagesDir, $logosDir -ItemType Directory | Out-Null
+    New-Item $logosDir -ItemType Directory | Out-Null
 
     Write-Host '==> Drawing the MSIX logos'
     # Windows picks the file that matches each place it shows the logo, by scale or by target size, so every one is
@@ -421,54 +422,70 @@ if ($Msix) {
     Invoke-Native $makePri @('createconfig', '/cf', $priConfig, '/dq', 'en-GB', '/pv', '10.0.0', '/o')
 }
 
-foreach ($rid in $Runtime) {
-    $publishDir = Join-Path $artifacts "Publish/$rid"
-    Write-Host "==> Publishing $rid"
-    Invoke-Native dotnet (@('publish', $appProject, '-c', $Configuration, '-r', $rid, '--self-contained', '--no-restore', '-o', $publishDir) + $versionProperties)
+# Every package comes in two builds. The framework-dependent one, with the plain name, runs on the .NET 10 Desktop
+# Runtime installed on the machine, which Microsoft Update patches. The self-contained one carries its own runtime, for
+# machines that can't have it installed, and only a new release patches it. The restore above fetches the runtime packs
+# for every runtime in RuntimeIdentifiers, so both publish without restoring again.
+$builds = @(
+    @{ Name = 'framework-dependent'; Switch = '--no-self-contained'; Suffix = '' },
+    @{ Name = 'self-contained'; Switch = '--self-contained'; Suffix = '-self-contained' }
+)
+foreach ($build in $builds) {
+    if ($Msix) {
+        $packagesDir = Join-Path $msixDir "Packages/$($build.Name)"
+        New-Item $packagesDir -ItemType Directory | Out-Null
+    }
 
-    if ($signTool) {
-        # Sign only our own binaries. The .NET runtime files already carry Microsoft's signature.
-        $ours = Get-ChildItem $publishDir -File |
-            Where-Object { $_.Name -eq "$product.exe" -or $_.Name -like 'WSLProxy.*.dll' -or $_.Name -eq "$product.dll" }
-        Write-Host "==> Signing $($ours.Count) files for $rid"
-        Invoke-Native $signTool (@('sign') + $signArguments + $ours.FullName)
-        if ($verifySignatures) { Invoke-Native $signTool (@('verify', '/pa') + $ours.FullName) }
+    foreach ($rid in $Runtime) {
+        $publishDir = Join-Path $artifacts "Publish/$rid$($build.Suffix)"
+        Write-Host "==> Publishing $rid, $($build.Name)"
+        Invoke-Native dotnet (@('publish', $appProject, '-c', $Configuration, '-r', $rid, $build.Switch, '--no-restore', '-o', $publishDir) + $versionProperties)
+
+        if ($signTool) {
+            # Sign only our own binaries. The .NET runtime files in a self-contained build and the Microsoft.Extensions
+            # package DLLs already carry Microsoft's signature.
+            $ours = Get-ChildItem $publishDir -File |
+                Where-Object { $_.Name -eq "$product.exe" -or $_.Name -like 'WSLProxy.*.dll' -or $_.Name -eq "$product.dll" }
+            Write-Host "==> Signing $($ours.Count) files for $rid, $($build.Name)"
+            Invoke-Native $signTool (@('sign') + $signArguments + $ours.FullName)
+            if ($verifySignatures) { Invoke-Native $signTool (@('verify', '/pa') + $ours.FullName) }
+        }
+
+        if ($Msix) {
+            # The package holds the signed publish output, the filled manifest and the logos.
+            $stagingDir = Join-Path $msixDir "Staging/$rid$($build.Suffix)"
+            Write-Host "==> Packing the MSIX package for $rid, $($build.Name)"
+            New-Item $stagingDir -ItemType Directory | Out-Null
+            Copy-Item (Join-Path $publishDir '*') $stagingDir -Recurse
+            Copy-Item $logosDir $stagingDir -Recurse
+            $manifest = New-AppxManifest $manifestTemplate @{
+                Publisher            = $publisher
+                PublisherDisplayName = $PublisherDisplayName
+                Version              = $packageVersion
+                Architecture         = $rid -replace '^win-', ''
+            }
+            [IO.File]::WriteAllText((Join-Path $stagingDir 'AppxManifest.xml'), $manifest, (New-Object Text.UTF8Encoding($false)))
+            # Index the logos from their own root, so the paths in resources.pri match Images\ in the package.
+            Invoke-Native $makePri @('new', '/pr', $logosRoot, '/cf', $priConfig, '/mn', (Join-Path $stagingDir 'AppxManifest.xml'),
+                '/of', (Join-Path $stagingDir 'resources.pri'), '/o')
+            $package = Join-Path $packagesDir "$product-$($gitVersion.SemVer)-$rid$($build.Suffix).msix"
+            Invoke-Native $makeAppx @('pack', '/d', $stagingDir, '/p', $package, '/o')
+        }
+        else {
+            $zip = Join-Path $artifacts "$product-$($gitVersion.SemVer)-$rid$($build.Suffix).zip"
+            Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zip
+        }
     }
 
     if ($Msix) {
-        # The package holds the signed publish output, the filled manifest and the logos.
-        $stagingDir = Join-Path $msixDir "Staging/$rid"
-        Write-Host "==> Packing the MSIX package for $rid"
-        New-Item $stagingDir -ItemType Directory | Out-Null
-        Copy-Item (Join-Path $publishDir '*') $stagingDir -Recurse
-        Copy-Item $logosDir $stagingDir -Recurse
-        $manifest = New-AppxManifest $manifestTemplate @{
-            Publisher            = $publisher
-            PublisherDisplayName = $PublisherDisplayName
-            Version              = $packageVersion
-            Architecture         = $rid -replace '^win-', ''
-        }
-        [IO.File]::WriteAllText((Join-Path $stagingDir 'AppxManifest.xml'), $manifest, (New-Object Text.UTF8Encoding($false)))
-        # Index the logos from their own root, so the paths in resources.pri match Images\ in the package.
-        Invoke-Native $makePri @('new', '/pr', $logosRoot, '/cf', $priConfig, '/mn', (Join-Path $stagingDir 'AppxManifest.xml'),
-            '/of', (Join-Path $stagingDir 'resources.pri'), '/o')
-        $package = Join-Path $packagesDir "$product-$($gitVersion.SemVer)-$rid.msix"
-        Invoke-Native $makeAppx @('pack', '/d', $stagingDir, '/p', $package, '/o')
+        # Only the bundle is signed: Windows checks the bundle's signature, which covers the packages inside it. Both
+        # bundles have the same package identity, because they're the same app, so a machine installs one or the other.
+        $bundle = Join-Path $artifacts "$product-$($gitVersion.SemVer)$($build.Suffix).msixbundle"
+        Write-Host "==> Bundling and signing the $($build.Name) MSIX bundle"
+        Invoke-Native $makeAppx @('bundle', '/d', $packagesDir, '/p', $bundle, '/bv', $packageVersion, '/o')
+        Invoke-Native $signTool (@('sign') + $signArguments + $bundle)
+        if ($verifySignatures) { Invoke-Native $signTool @('verify', '/pa', $bundle) }
     }
-    else {
-        $zip = Join-Path $artifacts "$product-$($gitVersion.SemVer)-$rid.zip"
-        Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zip
-    }
-}
-
-if ($Msix) {
-    # Only the bundle is signed: Windows checks the bundle's signature, which covers the packages inside it.
-    $bundle = Join-Path $artifacts "$product-$($gitVersion.SemVer).msixbundle"
-    Write-Host '==> Bundling the MSIX packages'
-    Invoke-Native $makeAppx @('bundle', '/d', $packagesDir, '/p', $bundle, '/bv', $packageVersion, '/o')
-    Write-Host '==> Signing the MSIX bundle'
-    Invoke-Native $signTool (@('sign') + $signArguments + $bundle)
-    if ($verifySignatures) { Invoke-Native $signTool @('verify', '/pa', $bundle) }
 }
 
 Write-Host '==> Writing SHA256SUMS.txt'

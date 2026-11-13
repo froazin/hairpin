@@ -35,13 +35,13 @@ You need Windows 10 or 11 and the .NET SDK version that [global.json](global.jso
 
 `build.ps1` runs in Windows PowerShell 5.1 or PowerShell 7. It writes to `Artifacts/`:
 
-- `Publish/<runtime>/`: a self-contained folder for `win-x64` and `win-arm64`.
-- `WSLProxyRelay-<version>-<runtime>.zip`: each folder, zipped.
+- `Publish/<runtime>/` and `Publish/<runtime>-self-contained/`: a framework-dependent folder, which runs on the .NET 10 Desktop Runtime installed on the machine, and a self-contained folder, which carries its own runtime, for `win-x64` and `win-arm64`.
+- `WSLProxyRelay-<version>-<runtime>.zip` and `WSLProxyRelay-<version>-<runtime>-self-contained.zip`: each folder, zipped.
 - `SHA256SUMS.txt`: a SHA-256 checksum for each zip, in `sha256sum` format.
 
 Signing needs `signtool.exe` from the Windows SDK and a code signing certificate in your certificate store. Without a thumbprint, the script warns and leaves the binaries unsigned.
 
-With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundle. It also needs `makeappx.exe` and `makepri.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
+With `-Msix`, the script writes `WSLProxyRelay-<version>.msixbundle` and `WSLProxyRelay-<version>-self-contained.msixbundle` instead of the zips, and `SHA256SUMS.txt` lists the bundles. It also needs `makeappx.exe` and `makepri.exe` from the Windows SDK, and the certificate's subject becomes the package's publisher. CI only builds the zips. [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) describes the MSIX build and how to install the bundle.
 
 ### A test certificate for MSIX
 

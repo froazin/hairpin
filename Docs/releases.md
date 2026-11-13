@@ -7,6 +7,7 @@ How [`.github/workflows/release.yml`](../.github/workflows/release.yml) releases
 1. [Overview](#overview)
 1. [How the version is decided](#how-the-version-is-decided)
 1. [Tags and releases](#tags-and-releases)
+1. [The .NET runtime](#the-net-runtime)
 1. [MSIX bundles built from source](#msix-bundles-built-from-source)
 1. [Security](#security)
 1. [Decisions](#decisions)
@@ -49,11 +50,28 @@ Runs share the `release` concurrency group: a run waits for the one in progress,
 
 ## Tags and releases
 
-- Each release is a GitHub release with a `vX.Y.Z` tag on the commit the run came from. Its assets are `WSLProxyRelay-X.Y.Z-win-x64.zip`, `WSLProxyRelay-X.Y.Z-win-arm64.zip` and `SHA256SUMS.txt`.
-- The notes start with a warning that the builds aren't code-signed, followed by notes GitHub generates from the merged PRs.
+- Each release is a GitHub release with a `vX.Y.Z` tag on the commit the run came from. Its assets are the four zips, a framework-dependent and a self-contained build for each of `win-x64` and `win-arm64` (see [The .NET runtime](#the-net-runtime)), and `SHA256SUMS.txt`.
+- The notes start with a warning that the builds aren't code-signed, and say that the plain zips need the .NET 10 Desktop Runtime, with the `winget` command that installs it, and the self-contained zips don't. Notes GitHub generates from the merged PRs follow.
 - Only the workflow creates release tags. Nobody tags a release by hand.
 - The `release` job only releases from the newest run, because a newer run releases the same changes. That also stops a re-run of an older run tagging an older commit.
 - When the repository is public, the job also attests the zips' build provenance with [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance), so users can check them with `gh attestation verify`. GitHub doesn't offer attestations for private repositories on this plan, so the step is skipped until then.
+
+## The .NET runtime
+
+Every package comes in two builds, so users and IT teams can choose:
+
+| Build | Zip | MSIX bundle | Size of a zip |
+| --- | --- | --- | --- |
+| Framework-dependent (recommended) | `WSLProxyRelay-X.Y.Z-<runtime>.zip` | `WSLProxyRelay-X.Y.Z.msixbundle` | Under 1 MB |
+| Self-contained | `WSLProxyRelay-X.Y.Z-<runtime>-self-contained.zip` | `WSLProxyRelay-X.Y.Z-self-contained.msixbundle` | About 60 MB |
+
+The framework-dependent build carries the app, not .NET. It runs on the .NET 10 Desktop Runtime (`Microsoft.WindowsDesktop.App`) installed on the machine, for the same architecture as the build: x64 for `win-x64`, Arm64 for `win-arm64`. Install it with `winget install Microsoft.DotNet.DesktopRuntime.10`, or from the .NET download page. Without it the app doesn't start, and .NET says which runtime it needs. The .NET SDK includes the runtime, so a machine with the SDK already has it.
+
+The self-contained build carries its own copy of the runtime, for machines where the runtime can't be installed. Nothing patches that copy except a new release of the app, so prefer the framework-dependent build wherever the runtime can be installed.
+
+- **Patches:** the framework-dependent build uses the newest 10.0 patch installed, so a patched runtime applies from the app's next start, without a new release of the app.
+- **Microsoft Update, not Windows Update:** Microsoft ships .NET's security and other fixes through Microsoft Update. Client Windows gets them through Automatic Updates. IT teams can use WSUS or the Microsoft Update Catalog instead. Windows Server only gets them through Automatic Updates after a registry opt-in. A `BlockMU` registry value stops these updates. Windows Update itself only services .NET Framework.
+- **MSIX:** an MSIX package can't declare a dependency on the .NET runtime, so App Installer and Intune install the framework-dependent bundle whether the runtime is there or not. Deploy the runtime first, such as with its own Intune app. Both bundles have the same package identity, so a machine has one or the other installed.
 
 ## MSIX bundles built from source
 
@@ -67,10 +85,10 @@ Windows doesn't install an unsigned MSIX package and Intune doesn't deploy one, 
 
 - **Tools:** the Windows SDK's `makeappx.exe`, `makepri.exe` and `signtool.exe`. The script looks on the `PATH`, then in the newest Windows SDK for the machine's architecture.
 - **Certificate:** found by thumbprint, with any spaces removed, in `CurrentUser\My`, then `LocalMachine\My`. `signtool` only looks in the machine's store when it's told to, so the script passes `/sm` for a certificate it found there. It must have the code signing extended key usage (`1.3.6.1.5.5.7.3.3`) and its private key. Its subject becomes the package's publisher verbatim, because `signtool` refuses to sign a package whose publisher doesn't match the certificate exactly. `-PublisherDisplayName` sets the publisher name Windows shows, and defaults to the subject's common name (CN).
-- **Packing:** for each runtime, after the publish and the binary signing, the script copies the publish folder into `Artifacts/Msix/Staging/<runtime>/`, adds the logos and fills in [`Packaging/AppxManifest.xml`](../Packaging/AppxManifest.xml), escaping each value for XML. `makeappx pack` makes `Artifacts/Msix/Packages/WSLProxyRelay-<version>-<runtime>.msix`.
+- **Packing:** the script packs each build, framework-dependent and self-contained, on its own. For each runtime, after the publish and the binary signing, it copies the publish folder into `Artifacts/Msix/Staging/<runtime>/`, or `Staging/<runtime>-self-contained/` for the self-contained build, adds the logos and fills in [`Packaging/AppxManifest.xml`](../Packaging/AppxManifest.xml), escaping each value for XML. `makeappx pack` makes `Artifacts/Msix/Packages/<build>/WSLProxyRelay-<version>-<runtime>.msix`, with a `-self-contained` suffix for the self-contained build, where `<build>` is `framework-dependent` or `self-contained`.
 - **Logos:** the script draws every logo from `Assets/wslproxy-logo.svg` at its own size, so none is stretched: each of the three logos at 100%, 125%, 150%, 200% and 400% scale, and the small logo at 14 target sizes from 16 to 256 pixels, plain and unplated, which Start, search and the taskbar use. It draws only the SVG features the logo uses, and stops with an error if the SVG gains anything else. `makepri` indexes the logos into `resources.pri`, so the manifest names each logo once and Windows picks the file for the place and display scale.
-- **Bundling and signing:** `makeappx bundle` puts the `x64` and `arm64` packages into `Artifacts/WSLProxyRelay-<version>.msixbundle`. Only the bundle is signed, with SHA-256 and the timestamp server, and `signtool verify /pa` checks it, unless the certificate is self-signed: then the script skips the check with a warning, because it needs a trusted root, and a test certificate shouldn't be made one. Package versions have four parts, so the packages and the bundle use `Major.Minor.Patch.0`.
-- **Output:** the bundle replaces the zips, and `SHA256SUMS.txt` lists only the bundle.
+- **Bundling and signing:** for each build, `makeappx bundle` puts the `x64` and `arm64` packages from `Packages/<build>/` into one bundle: `Artifacts/WSLProxyRelay-<version>.msixbundle` for the framework-dependent build and `Artifacts/WSLProxyRelay-<version>-self-contained.msixbundle` for the self-contained one. Only the bundles are signed, with SHA-256 and the timestamp server, and `signtool verify /pa` checks each, unless the certificate is self-signed: then the script skips the check with a warning, because it needs a trusted root, and a test certificate shouldn't be made one. Package versions have four parts, so the packages and the bundle use `Major.Minor.Patch.0`.
+- **Output:** the two bundles replace the zips, and `SHA256SUMS.txt` lists only the bundles.
 
 The package is a full-trust desktop app (`runFullTrust`, `packagedClassicApp` at medium integrity) for Windows 11 22H2 (10.0.22621) or later, the oldest Windows that supports WSL's mirrored networking. Windows adds it to the Start menu and the user uninstalls it from Settings like any other app. It starts at sign-in through a startup task rather than the `Run` key, and keeps its settings and logs in the package's `LocalState` folder. [Start at sign-in](tray-ui.md#start-at-sign-in) and [Settings files](tray-ui.md#settings-files) in tray-ui.md describe them.
 
@@ -92,6 +110,7 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 - **No release without a bump.** A run whose commits don't bump the version releases nothing, rather than a patch.
 - **Unsigned for now.** Releases are published with SHA-256 checksums but without Authenticode signatures, until the project has a code signing certificate. `build.ps1` can still sign a local build with `-CertificateThumbprint`.
 - **Zips in CI, MSIX from source.** An MSIX package has to be signed, and the project keeps no signing certificate in GitHub, so CI and releases stay with unsigned zips. `build.ps1 -Msix` lets an organisation build a bundle signed with its own certificate, with the publisher that certificate names.
+- **Both builds, framework-dependent first.** A self-contained build carries its own copy of .NET, which only a new release of the app can patch. A framework-dependent build runs on the machine's runtime, which Microsoft Update patches as soon as Microsoft ships a fix, and IT can see and manage it like any other Microsoft product. Its cost is a prerequisite, so the self-contained build stays available for machines where the runtime can't be installed, under a name that says what it is.
 - **One bundle, not one package per runtime.** A single `.msixbundle` holds the `x64` and `arm64` packages, and Windows installs the one that matches the machine.
 - **Full trust, not an AppContainer.** An `appContainer` app, such as one under Win32 app isolation, would reach less, but Windows blocks loopback connections to packaged apps by default. Letting an unpackaged client, such as WSL's traffic, connect would need `CheckNetIsolation.exe LoopbackExempt -is` running the whole time, with administrator rights, and Microsoft supports that only for sideloading and debugging. Accepting connections on `127.0.0.1` is the relay's whole job.
 
@@ -116,3 +135,5 @@ To install the bundle, the machine must trust the certificate. A certificate tha
 - https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-manual-conversion
 - https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes
 - https://learn.microsoft.com/en-us/windows/apps/develop/communication/interprocess-communication
+- https://learn.microsoft.com/en-us/dotnet/core/install/windows
+- https://learn.microsoft.com/en-us/dotnet/core/versions/selection

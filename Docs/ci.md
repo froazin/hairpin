@@ -40,7 +40,7 @@ The `build` job runs on Windows Server 2025:
 
 1. It checks out the whole history, because GitVersion reads every commit and tag since the latest release. A shallow clone gives a wrong version without an error.
 1. [actions/setup-dotnet](https://github.com/actions/setup-dotnet) installs the latest .NET 10 SDK, which [`global.json`](../global.json) accepts. It caches nothing.
-1. It runs [`build.ps1`](../build.ps1) in Windows PowerShell 5.1, exactly as a local build does: GitVersion, a locked restore, the build with warnings as errors and the recommended analysers, the tests, a self-contained publish for `win-x64` and `win-arm64`, the zips and `SHA256SUMS.txt`. Running it in 5.1 proves the script still works where users run it. While the solution has no test projects, the script warns rather than failing.
+1. It runs [`build.ps1`](../build.ps1) in Windows PowerShell 5.1, exactly as a local build does: GitVersion, a locked restore, the build with warnings as errors and the recommended analysers, the tests, a framework-dependent and a self-contained publish for `win-x64` and `win-arm64`, the zips and `SHA256SUMS.txt`. Running it in 5.1 proves the script still works where users run it. While the solution has no test projects, the script warns rather than failing.
 1. It reads `Artifacts/version.json`, which `build.ps1` writes from GitVersion, and outputs `version` (`MajorMinorPatch`) and `release-due`. A release is due when `MajorMinorPatch` differs from `VersionSourceSemVer`: some commit since the latest tag bumps the version. See [releases.md](releases.md#how-the-version-is-decided).
 1. It uploads the zips and `SHA256SUMS.txt` as the `packages` artifact, kept for 7 days. Reviewers can download a PR's build from its run.
 
