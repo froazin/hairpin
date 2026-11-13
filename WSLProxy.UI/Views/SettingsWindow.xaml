@@ -51,6 +51,21 @@
                         <TextBlock Text="Upstream proxy" Style="{DynamicResource BodyStrongTextBlockStyle}" />
                         <TextBlock Style="{StaticResource Hint}"
                                    Text="Leave this empty to start with. Without an upstream proxy the relay connects to each destination itself, from Windows, so your endpoint agent already handles the traffic. Add one only if direct connections don't work." />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="96" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <Label Content="HTTP proxy host" Target="{Binding ElementName=HttpHostBox}" Padding="0,0,0,4" />
+                                <TextBox x:Name="HttpHostBox" AutomationProperties.Name="HTTP proxy host" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <Label Content="Port" Target="{Binding ElementName=HttpPortBox}" Padding="0,0,0,4" />
+                                <TextBox x:Name="HttpPortBox" AutomationProperties.Name="HTTP proxy port" />
+                            </StackPanel>
+                        </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -58,14 +73,16 @@
                                 <ColumnDefinition Width="96" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <Label Content="Host" Target="{Binding ElementName=UpstreamHostBox}" Padding="0,0,0,4" />
-                                <TextBox x:Name="UpstreamHostBox" AutomationProperties.Name="Upstream proxy host" />
+                                <Label Content="HTTPS proxy host" Target="{Binding ElementName=HttpsHostBox}" Padding="0,0,0,4" />
+                                <TextBox x:Name="HttpsHostBox" AutomationProperties.Name="HTTPS proxy host" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <Label Content="Port" Target="{Binding ElementName=UpstreamPortBox}" Padding="0,0,0,4" />
-                                <TextBox x:Name="UpstreamPortBox" AutomationProperties.Name="Upstream proxy port" />
+                                <Label Content="Port" Target="{Binding ElementName=HttpsPortBox}" Padding="0,0,0,4" />
+                                <TextBox x:Name="HttpsPortBox" AutomationProperties.Name="HTTPS proxy port" />
                             </StackPanel>
                         </Grid>
+                        <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+                                   Text="Like HTTP_PROXY and HTTPS_PROXY: the HTTP proxy takes http:// addresses and the HTTPS proxy https:// ones. Leave the HTTPS host or port empty to use the HTTP one." />
                     </StackPanel>
                 </Border>
 

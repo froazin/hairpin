@@ -32,6 +32,12 @@ internal sealed class RelayException : Exception
 /// <param name="Router">The router built from those options and the bound port.</param>
 internal sealed record RelayRuntime(RelayOptions Options, Router Router)
 {
+    /// <summary>The proxy plain HTTP requests go to, or null when they go direct.</summary>
+    public UpstreamEndpoint? HttpUpstream { get; } = Options.Upstream.ForHttp;
+
+    /// <summary>The proxy CONNECT tunnels go to, or null when they go direct.</summary>
+    public UpstreamEndpoint? HttpsUpstream { get; } = Options.Upstream.ForHttps;
+
     public RelayLimits Limits => Options.Limits;
 
     public TimeSpan HeaderTimeout => TimeSpan.FromSeconds(Limits.HeaderTimeoutSeconds);
@@ -55,7 +61,7 @@ internal interface ISessionHost
 
     void OnRequest();
 
-    void OnUpstreamResult(bool reachable);
+    void OnUpstreamResult(UpstreamEndpoint upstream, bool reachable);
 
     TrafficCounters Traffic { get; }
 }
@@ -105,7 +111,7 @@ internal static partial class Log
     public static partial void Accepted(ILogger logger, int clientPort);
 
     [LoggerMessage(EventId = 20, Level = LogLevel.Information, Message = "Upstream proxy {Upstream} is {Health}")]
-    public static partial void UpstreamHealth(ILogger logger, string upstream, Status.UpstreamHealth health);
+    public static partial void UpstreamHealth(ILogger logger, UpstreamEndpoint upstream, Status.UpstreamHealth health);
 }
 
 /// <summary>

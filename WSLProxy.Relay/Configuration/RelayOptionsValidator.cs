@@ -25,23 +25,9 @@ internal sealed class RelayOptionsValidator : IValidateOptions<RelayOptions>
         }
 
         var upstream = options.Upstream;
-        if (upstream.IsConfigured)
-        {
-            if (upstream.Port is < 1 or > 65535)
-            {
-                failures.Add("Relay:Upstream:Port must be from 1 to 65535.");
-            }
-
-            if (!HostNormaliser.TryNormalise(upstream.Host.Trim(), out var host, out var error))
-            {
-                failures.Add("Relay:Upstream:Host isn't a valid host name or IPv4 address: " + error);
-            }
-            else if (DestinationPolicy.IsDeniedHost(host, upstream.Port, options.ListenPort, denyLocal: false, out _))
-            {
-                failures.Add("Relay:Upstream points back at the relay itself.");
-            }
-        }
-
+        ValidateProxy("Http", upstream.Http, upstream.ForHttp, options.ListenPort, failures);
+        // An HTTPS proxy that's the HTTP one has just been checked: don't report the same problem twice.
+        ValidateProxy("Https", upstream.Https, upstream.ForHttps == upstream.ForHttp ? null : upstream.ForHttps, options.ListenPort, failures);
         if (upstream.HealthCheckIntervalSeconds is < 0 or > OneDay)
         {
             failures.Add("Relay:Upstream:HealthCheckIntervalSeconds must be from 0 to 86400.");
@@ -67,5 +53,25 @@ internal sealed class RelayOptionsValidator : IValidateOptions<RelayOptions>
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    /// <summary>Checks one proxy's own values, then the endpoint it resolves to, which may borrow the HTTP proxy's.</summary>
+    private static void ValidateProxy(string name, UpstreamProxyOptions proxy, UpstreamEndpoint? endpoint, int listenPort, List<string> failures)
+    {
+        var key = "Relay:Upstream:" + name;
+        if (proxy.Port is < 1 or > 65535)
+        {
+            failures.Add(key + ":Port must be from 1 to 65535.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(proxy.Host) && !HostNormaliser.TryNormalise(proxy.Host.Trim(), out _, out var error))
+        {
+            failures.Add(key + ":Host isn't a valid host name or IPv4 address: " + error);
+        }
+        else if (endpoint is not null && HostNormaliser.TryNormalise(endpoint.Host, out var host, out _)
+            && DestinationPolicy.IsDeniedHost(host, endpoint.Port, listenPort, denyLocal: false, out _))
+        {
+            failures.Add(key + " points back at the relay itself.");
+        }
     }
 }

@@ -1,3 +1,4 @@
+using WSLProxy.Relay.Configuration;
 using WSLProxy.Relay.Routing;
 
 namespace WSLProxy.Relay.Tests;
@@ -110,8 +111,29 @@ public sealed class RoutingTests
     {
         var list = NoProxyList.Parse(["10.0.0.0/8", "*.corp.example"], out var errors);
         Assert.IsEmpty(errors);
-        var router = new Router(list, hasUpstream, listenPort: 3128, denyLocal);
+        var router = new Router(list, hasUpstream, hasUpstream, listenPort: 3128, denyLocal);
         Assert.IsTrue(HostNormaliser.TryNormalise(host, out var normalised, out _));
-        Assert.AreEqual(expected, router.Decide(normalised, port).Kind);
+        Assert.AreEqual(expected, router.Decide(normalised, port, tunnel: false).Kind);
+        Assert.AreEqual(expected, router.Decide(normalised, port, tunnel: true).Kind);
+    }
+
+    [TestMethod]
+    [DataRow("", 80, "", null, null, null)]
+    [DataRow(" proxy.example ", 8080, "", null, "proxy.example:8080", "proxy.example:8080")]
+    [DataRow("proxy.example", 8080, "", 8443, "proxy.example:8080", "proxy.example:8443")]
+    [DataRow("proxy.example", 8080, "secure.example", null, "proxy.example:8080", "secure.example:8080")]
+    [DataRow("", 80, "secure.example", 8443, null, "secure.example:8443")]
+    [DataRow("proxy.example", null, "", null, "proxy.example:80", "proxy.example:80")]
+    public void The_https_proxy_takes_the_http_proxys_host_and_port_when_they_are_empty(
+        string httpHost, int? httpPort, string httpsHost, int? httpsPort, string? expectedHttp, string? expectedHttps)
+    {
+        var upstream = new UpstreamOptions
+        {
+            Http = new UpstreamProxyOptions { Host = httpHost, Port = httpPort },
+            Https = new UpstreamProxyOptions { Host = httpsHost, Port = httpsPort },
+        };
+
+        Assert.AreEqual(expectedHttp, upstream.ForHttp?.ToString());
+        Assert.AreEqual(expectedHttps, upstream.ForHttps?.ToString());
     }
 }

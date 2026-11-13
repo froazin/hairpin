@@ -94,13 +94,15 @@ public sealed class Router
 {
     /// <summary>Creates a router.</summary>
     /// <param name="noProxy">The bypass list.</param>
-    /// <param name="hasUpstream">True when an upstream proxy is configured.</param>
+    /// <param name="hasHttpUpstream">True when plain HTTP requests have an upstream proxy.</param>
+    /// <param name="hasHttpsUpstream">True when CONNECT tunnels have an upstream proxy.</param>
     /// <param name="listenPort">The relay's own port, to refuse loops.</param>
     /// <param name="denyLocal">Whether local destinations are refused.</param>
-    public Router(NoProxyList noProxy, bool hasUpstream, int listenPort, bool denyLocal)
+    public Router(NoProxyList noProxy, bool hasHttpUpstream, bool hasHttpsUpstream, int listenPort, bool denyLocal)
     {
         NoProxy = noProxy;
-        HasUpstream = hasUpstream;
+        HasHttpUpstream = hasHttpUpstream;
+        HasHttpsUpstream = hasHttpsUpstream;
         ListenPort = listenPort;
         DenyLocal = denyLocal;
     }
@@ -108,8 +110,11 @@ public sealed class Router
     /// <summary>The bypass list.</summary>
     public NoProxyList NoProxy { get; }
 
-    /// <summary>True when an upstream proxy is configured.</summary>
-    public bool HasUpstream { get; }
+    /// <summary>True when plain HTTP requests have an upstream proxy.</summary>
+    public bool HasHttpUpstream { get; }
+
+    /// <summary>True when CONNECT tunnels have an upstream proxy.</summary>
+    public bool HasHttpsUpstream { get; }
 
     /// <summary>The relay's own port.</summary>
     public int ListenPort { get; }
@@ -119,17 +124,20 @@ public sealed class Router
 
     /// <summary>
     /// Decides the route: <see cref="RouteKind.Deny"/> if <see cref="DestinationPolicy.IsDeniedHost"/> says so;
-    /// otherwise <see cref="RouteKind.Direct"/> if there's no upstream or the bypass list matches;
+    /// otherwise <see cref="RouteKind.Direct"/> if the request's kind has no upstream or the bypass list matches;
     /// otherwise <see cref="RouteKind.Upstream"/>.
     /// </summary>
-    public RouteDecision Decide(NormalisedHost host, int port)
+    /// <param name="host">The destination host.</param>
+    /// <param name="port">The destination port.</param>
+    /// <param name="tunnel">True for a CONNECT tunnel, which uses the HTTPS upstream; false for a plain HTTP request.</param>
+    public RouteDecision Decide(NormalisedHost host, int port, bool tunnel)
     {
         if (DestinationPolicy.IsDeniedHost(host, port, ListenPort, DenyLocal, out var reason))
         {
             return new RouteDecision(RouteKind.Deny, reason);
         }
 
-        if (!HasUpstream)
+        if (!(tunnel ? HasHttpsUpstream : HasHttpUpstream))
         {
             return new RouteDecision(RouteKind.Direct, "no upstream");
         }

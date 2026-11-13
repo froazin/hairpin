@@ -23,16 +23,18 @@ The engine is an HTTP/1.1 forward proxy on `127.0.0.1`, IPv4 only, written on `S
 ```mermaid
 flowchart LR
     accTitle: How the relay routes a request
-    accDescr: A WSL client sends a request to RelayService on 127.0.0.1. ClientSession parses it with HeadParser, normalises the host and asks Router. Router refuses local destinations, sends bypass-list matches and everything when there is no upstream straight to the destination through Connector, and sends the rest to the upstream proxy.
+    accDescr: A WSL client sends a request to RelayService on 127.0.0.1. ClientSession parses it with HeadParser, normalises the host and asks Router. Router refuses local destinations, sends bypass-list matches and everything without an upstream straight to the destination through Connector, and sends the rest to the HTTP upstream proxy for plain requests or the HTTPS upstream proxy for CONNECT tunnels.
     client[WSL client] -->|CONNECT or absolute-form request| service[RelayService on 127.0.0.1]
     service -->|one per connection| session[ClientSession]
     session -->|head bytes| parser[HeadParser and Framing]
     session -->|host and port| router[Router]
     router -->|local or reserved| deny[403 Forbidden]
     router -->|no upstream, or no_proxy match| direct[Connector: resolve IPv4, recheck, connect]
-    router -->|everything else| upstream[Connector: upstream proxy]
+    router -->|plain request| httpUpstream[Connector: HTTP upstream proxy]
+    router -->|CONNECT tunnel| httpsUpstream[Connector: HTTPS upstream proxy]
     direct -->|Windows socket| destination[Destination]
-    upstream -->|Windows socket| proxy[Upstream proxy]
+    httpUpstream -->|Windows socket| proxy[Upstream proxies, often one]
+    httpsUpstream -->|Windows socket| proxy
 ```
 
 | Folder | Holds |
@@ -61,8 +63,10 @@ Heads are parsed as bytes with strict RFC 9110 and 9112 rules: CRLF line endings
 `Router.Decide` then picks one route:
 
 1. **Deny** when `DestinationPolicy` refuses the host: `localhost` names, loopback, link-local (including cloud metadata), `0.0.0.0/8`, multicast, broadcast and `168.63.129.16`. With `DenyLocalDestinations` off, only the relay's own listener is still refused.
-1. **Direct** when no upstream is configured, or the bypass list matches.
-1. **Upstream** otherwise.
+1. **Direct** when the request has no upstream, or the bypass list matches.
+1. **Upstream** otherwise: the HTTP upstream for a plain request, or the HTTPS upstream for a CONNECT tunnel.
+
+The two upstreams mirror `HTTP_PROXY` and `HTTPS_PROXY`: clients send `http://` URLs as plain requests and tunnel `https://` URLs with CONNECT. `UpstreamOptions` resolves them into `ForHttp` and `ForHttps`. The HTTPS host and port each default to the HTTP ones, so setting only the HTTP proxy sends everything through it, and setting only the HTTPS port uses the same host on another port.
 
 The bypass grammar is documented on `NoProxyRule`. Names never match addresses and nothing is looked up in DNS to decide. On the direct path, `Connector` resolves the name once (IPv4 only, with the Windows resolver), drops every address the deny list refuses, and connects only to the addresses it checked, so a name can't rebind to a local address between the check and the connect.
 
@@ -112,7 +116,7 @@ TCP keep-alive isn't turned on for client sockets: it breaks WSL mirrored-mode l
 
 It validates every version of the settings itself. Invalid settings never stop a running relay: it keeps listening with the last good settings and reports the problem in `RelaySnapshot.LastError`. If the settings are invalid at start-up, it stays Faulted until they're fixed. Settings aren't validated through the options system, because a failure there during a file reload would be thrown on the file watcher's thread.
 
-A change to the port rebinds the listener. Other changes apply to the next request, even on a kept-alive connection. Pausing closes the listener, and open connections finish. With an upstream configured, a TCP probe every `HealthCheckIntervalSeconds` sets `UpstreamHealth`. Status changes are published at most four times a second. Traffic totals (requests by route, the relay's own errors, and body and tunnel bytes each way) are kept separately in `TrafficCounters`, updated as bytes are written, and read with `IRelayMetrics.Read()` rather than published, so traffic never floods the status events.
+A change to the port rebinds the listener. Other changes apply to the next request, even on a kept-alive connection. Pausing closes the listener, and open connections finish. With an upstream configured, a TCP probe of each distinct upstream every `HealthCheckIntervalSeconds` sets its `UpstreamHealth`, which `RelaySnapshot` reports for `HttpUpstream` and `HttpsUpstream`. Status changes are published at most four times a second. Traffic totals (requests by route, the relay's own errors, and body and tunnel bytes each way) are kept separately in `TrafficCounters`, updated as bytes are written, and read with `IRelayMetrics.Read()` rather than published, so traffic never floods the status events.
 
 ## Security
 
