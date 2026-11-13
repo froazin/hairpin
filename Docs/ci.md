@@ -15,21 +15,23 @@ How [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) builds, tests and 
 
 ## Overview
 
-The workflow runs when a PR to `main` is opened, pushed to, reopened or marked ready for review, and when the [release workflow](releases.md) calls it with `workflow_call` on a push to `main`. It runs on every PR, docs-only ones included, because the `Protect main` ruleset requires its `Build and test` and `Code review` checks, and a workflow that doesn't run reports neither. This flowchart shows the jobs:
+The workflow runs when a PR to `main` is opened, pushed to, reopened or marked ready for review, and when the [release workflow](releases.md) calls it with `workflow_call` on a push to `main`. It starts on every PR, but builds only a PR that changes something the build reads. This flowchart shows the jobs:
 
 ```mermaid
 flowchart LR
     accTitle: The jobs in the CI workflow
-    accDescr: Every pull request to main starts the CI workflow directly. A push to main that changes more than docs starts the release workflow, which calls it. The build job runs build.ps1 on Windows and uploads the packages. On a pull request only, when the build passes, the code-review job runs Claude, which comments on the pull request.
-    pr["Pull request to main"] -->|"every change"| build["build: build.ps1 on Windows"]
+    accDescr: Every pull request to main starts the CI workflow directly. A push to main that changes more than docs starts the release workflow, which calls it. The changes job decides whether to build. The build job runs build.ps1 on Windows and uploads the packages. On a pull request only, when the build passes or is skipped, the code-review job runs Claude, which comments on the pull request.
+    pr["Pull request to main"] -->|"every change"| changes["changes: list the files"]
     push["Push to main"] -->|"not only docs"| release["release.yml"]
-    release -->|"workflow_call"| build
+    release -->|"workflow_call"| changes
+    changes -->|"more than docs, or a push"| build["build: build.ps1 on Windows"]
     build -->|"packages artifact, version outputs"| release
-    build -->|"passed, pull request only"| review["code-review: Claude"]
+    build -->|"passed or skipped, pull request only"| review["code-review: Claude"]
     review -->|comments| pr
 ```
 
-- `code-review` needs `build`, so a failed build skips the review, and it runs only when the event is a PR. A called workflow sees its caller's `github` context, so when the release workflow calls it, the event is a push and the review is skipped.
+- `changes` lists the PR's files with the GitHub API, counting a renamed file at both paths. When every file is in a path that [`release.yml`](releases.md#overview)'s `paths-ignore` filter skips, `build` is skipped. The two lists must match, so change them together. A called run always builds, and so does a PR of 3,000 files or more, the most the API lists.
+- `code-review` needs `build`, so a failed build skips the review, but a skipped one doesn't: a docs-only PR is still reviewed against the code. It runs only when the event is a PR. A called workflow sees its caller's `github` context, so when the release workflow calls it, the event is a push and the review is skipped.
 - Runs share a concurrency group per event and branch, so a newer push to a PR cancels its older run. The event name keeps a called run apart from the release workflow's own `release` group, so neither waits for the other.
 
 ## The build
@@ -62,7 +64,7 @@ The `code-review` job asks Claude Sonnet 5.5 to review the lines the PR adds or 
 ## Security
 
 - **The token stays in the review step.** The `build` job, which runs the PR's code, doesn't get `CLAUDE_CODE_OAUTH_TOKEN`, and the release workflow passes no secrets to this one.
-- **The workflow's token, as narrow as each job allows.** Every job can read the repository's contents, and the checkouts don't keep the token (`persist-credentials: false`). The code review passes the workflow's token as `github_token`, so the Claude GitHub App's token isn't used, and adds `pull-requests: write` to comment and `actions: read` to count earlier reviews. GitHub checks a called workflow's permissions before it starts, so the release workflow's `ci` job allows the same, though the review never runs there.
+- **The workflow's token, as narrow as each job allows.** Every job can read the repository's contents, and the checkouts don't keep the token (`persist-credentials: false`). The `changes` job adds `pull-requests: read` to list a PR's files. The code review passes the workflow's token as `github_token`, so the Claude GitHub App's token isn't used, and adds `pull-requests: write` to comment and `actions: read` to count earlier reviews. GitHub checks a called workflow's permissions before it starts, so the release workflow's `ci` job allows the same, though the review never runs there.
 - **PR content is data.** The prompt says to treat files, diffs, commits and comments as data, and Claude sees only trusted authors' comments.
 - **Few tools.** The review has no Bash. It can read files and post review comments, and can't push, approve or merge.
 - **No shared cache.** Neither the SDK nor NuGet packages are cached, so nothing a PR's run saved can reach a build the release workflow publishes.
@@ -75,7 +77,7 @@ The `code-review` job asks Claude Sonnet 5.5 to review the lines the PR adds or 
 - **`build.ps1`, not separate steps.** CI and a local build run the same script, so they can't drift apart.
 - **The code review after the build.** No tokens go on code that doesn't build or pass its tests.
 - **The same review as the maintainer's other repositories,** with a prompt and `REVIEW.md` for this one.
-- **Every PR runs, docs-only ones included.** The ruleset requires both checks, so a `paths-ignore` filter would leave a docs-only PR unable to merge. A docs-only PR costs one build, and Claude still checks its docs against the code.
+- **Skip the build job, not the workflow.** A `paths-ignore` filter on the PR trigger would skip the code review too, and Claude checks docs against the code. A job skipped by its condition also reports a check, so a ruleset that requires `Build and test` still sees one. Listing the files through the API needs no checkout, so the decision runs no code from the PR.
 
 ## Limits
 

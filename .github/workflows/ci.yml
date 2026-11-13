@@ -2,8 +2,8 @@
 name: CI
 
 # Builds and tests each pull request, and builds what the release workflow publishes when it calls this one on a push
-# to main. Only a pull request gets Claude's code review. Every pull request runs, docs-only ones included: the
-# repository requires both checks, and a skipped workflow reports neither, so the pull request could never merge.
+# to main. Only a pull request gets Claude's code review. Every pull request starts a run, so a docs-only one is still
+# reviewed against the code. It skips the build job instead, when nothing the build reads changed.
 on:
   pull_request:
     branches:
@@ -32,8 +32,56 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Works out whether a pull request changes anything the build reads. It skips the paths that release.yml's
+  # paths-ignore filter skips: change both together. A run the release workflow calls always builds.
+  changes:
+    name: Find the changes
+    runs-on: ubuntu-26.04
+    # pull-requests: read to list the pull request's files.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      build: ${{ steps.files.outputs.build }}
+    steps:
+      # A renamed file counts at its old path and its new one. The API lists at most 3,000 files, so a pull request
+      # that reaches that many always builds. A case pattern's * also matches /, so */* catches every file in a folder
+      # that isn't skipped, before *.md skips only the Markdown files at the root.
+      - name: List the changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "Not a pull request, so the build runs."
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api --paginate "repos/$REPOSITORY/pulls/$NUMBER/files" \
+            --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/files.txt"
+          build=false
+          if [ "$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq .changed_files)" -ge 3000 ]; then
+            build=true
+          fi
+          while IFS= read -r file; do
+            case "$file" in
+              Docs/* | .claude/* | .vscode/* | .github/dependabot.yml | LICENSE) ;;
+              */*) build=true ;;
+              *.md) ;;
+              *) build=true ;;
+            esac
+          done < "$RUNNER_TEMP/files.txt"
+          cat "$RUNNER_TEMP/files.txt"
+          echo "Build and test: $build."
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build and test
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: windows-2025
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -87,11 +135,16 @@ jobs:
     name: Code review
     # Only a pull request is reviewed, never a run the release workflow calls: there, github is the caller's context, so
     # the event is a push. Only code that passed the build is reviewed, so no tokens go on code that's known to be
-    # broken. Drafts aren't reviewed until they're ready. A Dependabot PR only bumps packages, the SDK or pinned
+    # broken. A docs-only pull request skips the build and is still reviewed, so !cancelled() lets the job run after a
+    # skipped one. Drafts aren't reviewed until they're ready. A Dependabot PR only bumps packages, the SDK or pinned
     # actions, which the build covers.
-    needs: build
+    needs:
+      - changes
+      - build
     if: >-
-      ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft
+      ${{ !cancelled() && needs.changes.result == 'success'
+      && (needs.build.result == 'success' || needs.build.result == 'skipped')
+      && github.event_name == 'pull_request' && !github.event.pull_request.draft
       && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-26.04
     # pull-requests: write for Claude's comments, and actions: read to count the earlier reviews.
@@ -287,7 +340,7 @@ jobs:
             3. Check each finding against the code before you post it. Drop any you can't back with evidence.
             4. Post each finding with `mcp__github_inline_comment__create_inline_comment`.
 
-            CI has already run `build.ps1` in Windows PowerShell 5.1 on Windows Server 2025, and it passed: a locked NuGet restore, the build with warnings as errors and the recommended .NET analysers, the MSTest tests, and a self-contained publish for win-x64 and win-arm64. Nothing has run the tray app, opened its windows, or sent traffic through the relay from WSL or past an endpoint network agent. Check those by reading. Don't report on the pull request's title and description.
+            ${{ needs.build.result == 'success' && 'CI has already run `build.ps1` in Windows PowerShell 5.1 on Windows Server 2025, and it passed: a locked NuGet restore, the build with warnings as errors and the recommended .NET analysers, the MSTest tests, and a self-contained publish for win-x64 and win-arm64.' || 'The pull request changes only files the build doesn''t read, such as docs, so CI didn''t build or test it.' }} Nothing has run the tray app, opened its windows, or sent traffic through the relay from WSL or past an endpoint network agent. Check those by reading. Don't report on the pull request's title and description.
 
             ## What to report
 
