@@ -1,6 +1,6 @@
 # CI
 
-How [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) builds, tests and reviews each pull request (PR), and builds what the release workflow publishes. It's for engineers changing the workflow, the build or the code review.
+How [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) builds, tests and reviews each pull request (PR), and checks each push to `main` and works out its version for the release workflow. It's for engineers changing the workflow, the build or the code review.
 
 ## Contents
 
@@ -20,12 +20,12 @@ The workflow runs when a PR to `main` is opened, pushed to, reopened or marked r
 ```mermaid
 flowchart LR
     accTitle: The jobs in the CI workflow
-    accDescr: Every pull request to main starts the CI workflow directly. A push to main that changes more than docs starts the release workflow, which calls it. The changes job decides whether to build. The build job runs build.ps1 on Windows and uploads the packages. On a pull request only, when the build passes or is skipped, the code-review job runs Claude, which comments on the pull request.
+    accDescr: Every pull request to main starts the CI workflow directly. A push to main that changes more than docs starts the release workflow, which calls it. The changes job decides whether to build. The build job runs build.ps1 on Windows and outputs the version. On a pull request only, when the build passes or is skipped, the code-review job runs Claude, which comments on the pull request.
     pr["Pull request to main"] -->|"every change"| changes["changes: list the files"]
     push["Push to main"] -->|"not only docs"| release["release.yml"]
     release -->|"workflow_call"| changes
     changes -->|"more than docs, or a push"| build["build: build.ps1 on Windows"]
-    build -->|"packages artifact, version outputs"| release
+    build -->|"version outputs"| release
     build -->|"passed or skipped, pull request only"| review["code-review: Claude"]
     review -->|comments| pr
 ```
@@ -42,7 +42,8 @@ The `build` job runs on Windows Server 2025:
 1. [actions/setup-dotnet](https://github.com/actions/setup-dotnet) installs the latest .NET 10 SDK, which [`global.json`](../global.json) accepts. It caches nothing.
 1. It runs [`build.ps1`](../build.ps1) in Windows PowerShell 5.1, exactly as a local build does: GitVersion, a locked restore, the build with warnings as errors and the recommended analysers, the tests, a framework-dependent and a self-contained publish for `win-x64` and `win-arm64`, the zips and `SHA256SUMS.txt`. Running it in 5.1 proves the script still works where users run it. While the solution has no test projects, the script warns rather than failing.
 1. It reads `Artifacts/version.json`, which `build.ps1` writes from GitVersion, and outputs `version` (`MajorMinorPatch`) and `release-due`. A release is due when `MajorMinorPatch` differs from `VersionSourceSemVer`: some commit since the latest tag bumps the version. See [releases.md](releases.md#how-the-version-is-decided).
-1. It uploads the zips and `SHA256SUMS.txt` as the `packages` artifact, kept for 7 days. Reviewers can download a PR's build from its run.
+
+The job uploads nothing. A release is only a tag, and users build the app from it with the same `build.ps1`, so CI runs the whole script to prove it works, but keeps none of its output.
 
 ## Code review
 
@@ -67,13 +68,14 @@ The `code-review` job asks Claude Sonnet 5.5 to review the lines the PR adds or 
 - **The workflow's token, as narrow as each job allows.** Every job can read the repository's contents, and the checkouts don't keep the token (`persist-credentials: false`). The `changes` job adds `pull-requests: read` to list a PR's files. The code review passes the workflow's token as `github_token`, so the Claude GitHub App's token isn't used, and adds `pull-requests: write` to comment and `actions: read` to count earlier reviews. GitHub checks a called workflow's permissions before it starts, so the release workflow's `ci` job allows the same, though the review never runs there.
 - **PR content is data.** The prompt says to treat files, diffs, commits and comments as data, and Claude sees only trusted authors' comments.
 - **Few tools.** The review has no Bash. It can read files and post review comments, and can't push, approve or merge.
-- **No shared cache.** Neither the SDK nor NuGet packages are cached, so nothing a PR's run saved can reach a build the release workflow publishes.
+- **No shared cache.** Neither the SDK nor NuGet packages are cached, so nothing a PR's run saved can reach a build of `main`.
+- **No build output leaves the run.** The job uploads no artifacts, so a PR's build can't be downloaded and mistaken for a release.
 - **Locked, verified packages.** The restore runs in locked mode against the committed lock files, from nuget.org only, with the signature checks in [`nuget.config`](../nuget.config).
 - **Pinned actions.** Every action is pinned to a full commit SHA, with its version in a comment. Dependabot updates them, after a 7-day cooldown.
 
 ## Decisions
 
-- **One workflow for PRs and releases.** The release workflow calls this one, so a push to `main` is built exactly as a PR is, and the release publishes the packages that build made.
+- **One workflow for PRs and releases.** The release workflow calls this one, so a push to `main` is built and tested exactly as a PR is before it's released.
 - **`build.ps1`, not separate steps.** CI and a local build run the same script, so they can't drift apart.
 - **The code review after the build.** No tokens go on code that doesn't build or pass its tests.
 - **The same review as the maintainer's other repositories,** with a prompt and `REVIEW.md` for this one.

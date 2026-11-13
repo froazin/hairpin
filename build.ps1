@@ -424,7 +424,7 @@ if ($Msix) {
 
 # Every package comes in two builds. The framework-dependent one, with the plain name, runs on the .NET 10 Desktop
 # Runtime installed on the machine, which Microsoft Update patches. The self-contained one carries its own runtime, for
-# machines that can't have it installed, and only a new release patches it. The restore above fetches the runtime packs
+# machines that can't have it installed, and only a new build patches it. The restore above fetches the runtime packs
 # for every runtime in RuntimeIdentifiers, so both publish without restoring again.
 $builds = @(
     @{ Name = 'framework-dependent'; Switch = '--no-self-contained'; Suffix = '' },

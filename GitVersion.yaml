@@ -40,5 +40,10 @@ branches:
     source-branches:
       - main
       - feature
+  # A detached HEAD, such as `git clone --branch v1.2.3` leaves, is unknown.
+  # On a v-tag it gives that tag's version, so a build from a cloned tag is
+  # stamped with it. Anywhere else it gives a pre-release, as other branches do.
   unknown:
     increment: Patch
+    prevent-increment:
+      when-current-commit-tagged: true

@@ -22,9 +22,9 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `build.ps1` | The local build: version, test, publish, sign and checksums. With `-Msix`, it builds a signed MSIX bundle instead of the zips. CI never uses `-Msix` |
 | `Packaging/` | `AppxManifest.xml`, the MSIX package manifest template that `build.ps1 -Msix` fills in. Read [Docs/releases.md](Docs/releases.md#msix-bundles-built-from-source) before you change it or the MSIX build |
 | `Docs/` | Design docs for engineers changing the code |
-| `.github/workflows/ci.yml` | Builds and tests each pull request that changes more than docs with `build.ps1`, then Claude reviews it. The release workflow calls it to build what it publishes. Read [Docs/ci.md](Docs/ci.md) before you change it |
+| `.github/workflows/ci.yml` | Builds and tests each pull request that changes more than docs with `build.ps1`, then Claude reviews it. The release workflow calls it to check each push to `main` and work out its version. It uploads nothing. Read [Docs/ci.md](Docs/ci.md) before you change it |
 | `REVIEW.md` | Instructions for CI's Claude code review: what counts as Important, the Nit cap, what to skip, what to always check and the evidence a finding needs |
-| `.github/workflows/release.yml`, `GitVersion.yaml` | On a push to `main`, calls CI, then releases each change that bumps the version as `vX.Y.Z`, with the zips and `SHA256SUMS.txt`. Read [Docs/releases.md](Docs/releases.md) before you change them |
+| `.github/workflows/release.yml`, `GitVersion.yaml` | On a push to `main`, calls CI, then tags each change that bumps the version as `vX.Y.Z`, with no GitHub release or packages. Read [Docs/releases.md](Docs/releases.md) before you change them |
 
 - Before you change anything, read [Docs/problem.md](Docs/problem.md) for why the app exists.
 - Before you change `WSLProxy.Relay/` or its tests, read [Docs/relay.md](Docs/relay.md).
@@ -62,6 +62,6 @@ When you review a change locally, follow `REVIEW.md` as it is on `main` (`git sh
 - **Commit scopes:** `relay`, `ui`, `app`, `build`, `ci`, `docs`, `claude`, `deps`.
 - **Feature flags:** none yet.
 - **Versions:** GitVersion works out the version from the commit types on `main`, using `GitVersion.yaml`, rather than commitizen. `!` always means a major bump, so until 1.0.0 no commit uses `!`: a breaking change is a `feat`, and its body explains what breaks.
-- **Releases:** the release workflow tags each release from `main` as `v<version>` and publishes the zips with a `SHA256SUMS.txt`. Releases aren't code-signed yet. See [Docs/releases.md](Docs/releases.md).
+- **Releases:** a release is only a `v<version>` tag, which the release workflow creates on `main`. There are no GitHub releases and no packages: users clone the tag and build the app with `build.ps1`. Don't add GitHub releases or packages without asking. See [Docs/releases.md](Docs/releases.md).
 - **CI:** GitHub Actions, in `.github/workflows/`. See [Docs/ci.md](Docs/ci.md).
 - **User docs:** the GitHub wiki is the user guide, and it must need very little updating. It covers what stays true between releases: what the app is for, the tasks and choices users make, and the WSL and Windows steps. Anything that changes between releases, such as the flyout's layout, metric names, error wording, settings-file keys and build steps, lives in `Docs/`, and the wiki links to it. When a change makes a wiki page wrong, update the wiki after the change merges, because a push publishes it.

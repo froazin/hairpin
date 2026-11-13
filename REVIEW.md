@@ -19,7 +19,7 @@ Mark a finding Important only when the change would do one of these:
 - Make `build.ps1` fail in Windows PowerShell 5.1, or change what it publishes or hashes without updating `Docs/releases.md`.
 - Make a design doc, the README, `CLAUDE.md`, `CONTRIBUTING.md` or this file say something about the code that's false after the change, so that someone following it would do the wrong thing.
 - Make CI or the release workflow skip a check the change needs, such as a `paths-ignore` entry in `release.yml` that skips a path the build reads, a path filter on `ci.yml`'s pull requests, a path its `changes` job treats as docs that the build reads, or let a job run when one it needs failed. `Docs/ci.md` and `Docs/releases.md` describe how they should work.
-- Give a job other than `release` in `release.yml` a token that can write, other than the permissions its `ci` job allows for CI's code review, or let the `release` job check out or run the repository's code, or publish anything the CI build didn't make.
+- Give a job other than `release` in `release.yml` a token that can write, other than the permissions its `ci` job allows for CI's code review, or let the `release` job check out or run the repository's code, or make it create anything but a `v` tag, such as a GitHub release or packages.
 - Widen what the Claude run in CI can do, such as its `permissions`, its `github_token`, its `--allowedTools` or its `--disallowedTools`, past what the "Security" section of `Docs/ci.md` allows, even when the change updates that doc too. Give `CLAUDE_CODE_OAUTH_TOKEN`, or a token that can write, to a step that runs the PR's code, or pass secrets to `ci.yml` from the release workflow.
 - Use an action without pinning it to a full commit SHA with its version in a comment, pin one to a release less than 7 days old, or shorten the 7-day Dependabot cooldown.
 - Put identifying data into the repository, such as a real hostname, proxy address, internal URL or user path. The repository will be public.
@@ -38,7 +38,7 @@ Every comment must be resolved before the PR can merge, so report Nits sparingly
 
 - Anything the compiler, the .NET analysers (warnings are errors) or the tests report. CI runs them before the review.
 - The PR's title and description.
-- That releases aren't code-signed. It's a decision recorded in `Docs/releases.md`.
+- That releases are only tags, with no GitHub release, packages or signed binaries. It's a decision recorded in `Docs/releases.md`.
 - A limit that a design doc's Limits section records, unless the change makes it worse.
 - An issue that a resolved review thread on the PR already raises, whatever its replies say. Resolving a thread settles it.
 
