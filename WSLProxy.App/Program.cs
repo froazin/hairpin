@@ -171,9 +171,24 @@ public static partial class Program
         }
         catch (JsonException)
         {
+            // Not valid JSON: set it aside below.
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Locked or unreadable, perhaps by an editor or antivirus. Leave it: configuration ignores a file it can't load.
+            return null;
+        }
+
+        try
+        {
             var target = settingsFile + ".invalid-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
             File.Move(settingsFile, target, overwrite: true);
             return Path.GetFileName(target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Couldn't rename it. Start anyway: configuration ignores a file it can't load.
+            return null;
         }
     }
 

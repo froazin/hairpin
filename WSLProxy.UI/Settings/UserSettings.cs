@@ -121,7 +121,8 @@ public sealed class UserSettingsStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
-            return ["Couldn't save the settings file: " + ex.Message];
+            // The type only: an exception's message can carry the user's profile path.
+            return ["Couldn't save the settings file (" + ex.GetType().Name + "). Check that its folder is writable and no other program has it open."];
         }
     }
 

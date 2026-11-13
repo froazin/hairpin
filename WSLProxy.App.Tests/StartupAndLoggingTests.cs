@@ -40,6 +40,19 @@ public sealed class StartupAndLoggingTests
     }
 
     [TestMethod]
+    public void A_settings_file_another_program_has_locked_is_left_alone_so_the_app_still_starts()
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{ not json");
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            Assert.IsNull(Program.SetAsideIfCorrupt(path));
+        }
+
+        Assert.IsTrue(File.Exists(path));
+    }
+
+    [TestMethod]
     public void File_logger_writes_exceptions_by_type_only_and_deletes_files_past_retention()
     {
         var old = Path.Combine(_directory, "relay-20000101.log");
