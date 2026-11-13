@@ -13,7 +13,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 
 | Path | Holds |
 | --- | --- |
-| `WSLProxy.App/` | The executable, `WSLProxyRelay.exe`. It wires the relay and the tray UI into one Generic Host, and ships `appsettings.json` |
+| `WSLProxy.App/` | The executable, `WSLProxyRelay.exe`. It wires the relay and the tray UI into one Generic Host, and ships `appsettings.json`, which `appsettings.schema.json` describes for editors. Change both together |
 | `WSLProxy.Relay/` | The proxy engine, as a class library: listener, HTTP parsing, routing and the relay service. No UI and no Windows-only APIs |
 | `WSLProxy.UI/` | The tray icon, flyout and settings window, as a WPF class library |
 | `WSLProxy.Relay.Tests/` | MSTest tests of the relay engine |
