@@ -6,5 +6,6 @@
   </Configurations>
   <Project Path="WSLProxy.App/WSLProxy.App.csproj" />
   <Project Path="WSLProxy.Relay/WSLProxy.Relay.csproj" />
+  <Project Path="WSLProxy.Relay.Tests/WSLProxy.Relay.Tests.csproj" />
   <Project Path="WSLProxy.UI/WSLProxy.UI.csproj" />
 </Solution>

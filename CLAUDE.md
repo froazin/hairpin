@@ -25,6 +25,7 @@ A per-user Windows tray app, written in .NET 10, that runs a local HTTP proxy on
 | `.github/workflows/release.yml`, `GitVersion.yaml` | On a push to `main`, calls CI, then releases each change that bumps the version as `vX.Y.Z`, with the zips and `SHA256SUMS.txt`. Read [Docs/releases.md](Docs/releases.md) before you change them |
 
 - Before you change anything, read [Docs/problem.md](Docs/problem.md) for why the app exists.
+- Before you change `WSLProxy.Relay/` or its tests, read [Docs/relay.md](Docs/relay.md).
 
 ## Conventions
 

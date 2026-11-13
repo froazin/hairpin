@@ -1,0 +1,18 @@
+<Project Sdk="MSTest.Sdk">
+
+  <!-- High-value tests of the relay engine. MSTest.Sdk's version is pinned in global.json. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>WSLProxy.Relay.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- No telemetry, code coverage or TRX extensions: keep the test dependencies minimal. -->
+    <TestingExtensionsProfile>None</TestingExtensionsProfile>
+    <!-- Test names describe behaviour, so underscores are fine. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WSLProxy.Relay\WSLProxy.Relay.csproj" />
+  </ItemGroup>
+
+</Project>
