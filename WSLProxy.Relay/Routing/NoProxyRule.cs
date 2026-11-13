@@ -190,7 +190,7 @@ public sealed class NoProxyRule
 
         var mask = prefix == 0 ? 0u : uint.MaxValue << (32 - prefix);
         var network = HostNormaliser.ToUInt32(address) & mask;
-        var masked = new IPAddress(new[] { (byte)(network >> 24), (byte)(network >> 16), (byte)(network >> 8), (byte)network });
+        var masked = new IPAddress([(byte)(network >> 24), (byte)(network >> 16), (byte)(network >> 8), (byte)network]);
         rule = new NoProxyRule
         {
             Original = original,
@@ -214,16 +214,14 @@ public sealed class NoProxyRule
 }
 
 /// <summary>An immutable, thread-safe bypass list.</summary>
-public sealed class NoProxyList
+/// <param name="rules">The rules, already parsed.</param>
+public sealed class NoProxyList(IReadOnlyList<NoProxyRule> rules)
 {
-    /// <summary>Creates a list from rules that have already been parsed.</summary>
-    public NoProxyList(IReadOnlyList<NoProxyRule> rules) => Rules = rules;
-
     /// <summary>An empty list.</summary>
     public static NoProxyList Empty { get; } = new([]);
 
     /// <summary>The rules, in order.</summary>
-    public IReadOnlyList<NoProxyRule> Rules { get; }
+    public IReadOnlyList<NoProxyRule> Rules { get; } = rules;
 
     /// <summary>
     /// Parses entries, skipping blank ones. Entries that don't parse are left out and returned in

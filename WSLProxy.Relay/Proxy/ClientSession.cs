@@ -75,6 +75,8 @@ internal sealed class ClientSession : IAsyncDisposable
             first = false;
             switch (read.Status)
             {
+                case HeadReadStatus.Ok:
+                    break;
                 case HeadReadStatus.EndOfStream:
                     return;
                 case HeadReadStatus.Truncated:

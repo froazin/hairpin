@@ -62,7 +62,7 @@ public sealed class RelayIntegrationTests
             var request = $"GET http://127.0.0.1:{originPort}{path} HTTP/1.1\r\nHost: 127.0.0.1\r\nProxy-Connection: keep-alive\r\n\r\n";
             await clientStream.WriteAsync(Encoding.ASCII.GetBytes(request), cts.Token);
             var head = await clientReader.ReadHeadAsync(8192, cts.Token);
-            StringAssert.StartsWith(Encoding.Latin1.GetString(head.Head.Span), "HTTP/1.1 200 OK\r\n");
+            Assert.StartsWith("HTTP/1.1 200 OK\r\n", Encoding.Latin1.GetString(head.Head.Span));
             using var body = new MemoryStream();
             await clientReader.CopyBodyAsync(new BodyFraming(BodyKind.ContentLength, 2), body, 1024, cts.Token);
             Assert.AreEqual("ok", Encoding.ASCII.GetString(body.ToArray()));
@@ -72,8 +72,8 @@ public sealed class RelayIntegrationTests
         lock (heads)
         {
             Assert.HasCount(2, heads);
-            StringAssert.StartsWith(heads[0], $"GET /one HTTP/1.1\r\nHost: 127.0.0.1:{originPort}\r\n");
-            StringAssert.StartsWith(heads[1], $"GET /two?x=1 HTTP/1.1\r\nHost: 127.0.0.1:{originPort}\r\n");
+            Assert.StartsWith($"GET /one HTTP/1.1\r\nHost: 127.0.0.1:{originPort}\r\n", heads[0]);
+            Assert.StartsWith($"GET /two?x=1 HTTP/1.1\r\nHost: 127.0.0.1:{originPort}\r\n", heads[1]);
             Assert.IsFalse(heads[0].Contains("Proxy-Connection", StringComparison.OrdinalIgnoreCase));
         }
 
@@ -118,11 +118,11 @@ public sealed class RelayIntegrationTests
         using var clientReader = new HttpReader(clientStream, 16 * 1024);
 
         await clientStream.WriteAsync(Encoding.ASCII.GetBytes($"GET http://127.0.0.1:{originPort}/ HTTP/1.1\r\n\r\n"), cts.Token);
-        StringAssert.StartsWith(Encoding.Latin1.GetString((await clientReader.ReadHeadAsync(8192, cts.Token)).Head.Span), "HTTP/1.1 200 OK\r\n");
+        Assert.StartsWith("HTTP/1.1 200 OK\r\n", Encoding.Latin1.GetString((await clientReader.ReadHeadAsync(8192, cts.Token)).Head.Span));
         await clientReader.CopyBodyAsync(new BodyFraming(BodyKind.ContentLength, 2), Stream.Null, 1024, cts.Token);
 
         await clientStream.WriteAsync(Encoding.ASCII.GetBytes($"POST http://127.0.0.1:{originPort}/charge HTTP/1.1\r\nContent-Length: 0\r\n\r\n"), cts.Token);
-        StringAssert.StartsWith(Encoding.Latin1.GetString((await clientReader.ReadHeadAsync(8192, cts.Token)).Head.Span), "HTTP/1.1 502 Bad Gateway\r\n");
+        Assert.StartsWith("HTTP/1.1 502 Bad Gateway\r\n", Encoding.Latin1.GetString((await clientReader.ReadHeadAsync(8192, cts.Token)).Head.Span));
 
         Assert.AreEqual(1, Volatile.Read(ref posts), "The POST must reach the origin exactly once.");
         Assert.AreEqual(1, Volatile.Read(ref accepted), "The relay mustn't open a second connection to retry a POST.");
@@ -204,11 +204,11 @@ public sealed class RelayIntegrationTests
             await using var stream = new NetworkStream(client);
             using var reader = new HttpReader(stream, 16 * 1024);
             await stream.WriteAsync(Encoding.ASCII.GetBytes(request), cts.Token);
-            StringAssert.StartsWith(Encoding.Latin1.GetString((await reader.ReadHeadAsync(8192, cts.Token)).Head.Span), "HTTP/1.1 200 ");
+            Assert.StartsWith("HTTP/1.1 200 ", Encoding.Latin1.GetString((await reader.ReadHeadAsync(8192, cts.Token)).Head.Span));
         }
 
-        StringAssert.StartsWith(await httpHead, "GET http://example.test/a HTTP/1.1\r\n");
-        StringAssert.StartsWith(await httpsHead, "CONNECT example.test:443 HTTP/1.1\r\n");
+        Assert.StartsWith("GET http://example.test/a HTTP/1.1\r\n", await httpHead);
+        Assert.StartsWith("CONNECT example.test:443 HTTP/1.1\r\n", await httpsHead);
     }
 
     [TestMethod]
@@ -222,7 +222,7 @@ public sealed class RelayIntegrationTests
 
         await stream.WriteAsync("CONNECT 127.0.0.1:445 HTTP/1.1\r\nHost: 127.0.0.1:445\r\n\r\n"u8.ToArray(), cts.Token);
         var head = await reader.ReadHeadAsync(8192, cts.Token);
-        StringAssert.StartsWith(Encoding.Latin1.GetString(head.Head.Span), "HTTP/1.1 403 Forbidden\r\n");
+        Assert.StartsWith("HTTP/1.1 403 Forbidden\r\n", Encoding.Latin1.GetString(head.Head.Span));
         Assert.AreEqual(1, relay.Service.Read().Errors);
     }
 

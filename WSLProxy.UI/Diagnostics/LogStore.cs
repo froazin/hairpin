@@ -14,15 +14,13 @@ public sealed record LogEntry(DateTime Time, LogLevel Level, string Category, st
 /// and cuts each message to <see cref="MaxMessageLength"/> characters, so it stays small: about 2 MB at the most with the
 /// default 1,000 lines. The log files keep the full history.
 /// </summary>
-public sealed class LogStore
+/// <param name="capacity">How many of the newest lines to keep.</param>
+public sealed class LogStore(int capacity)
 {
     /// <summary>The longest message kept, in characters. Longer messages are cut and end with an ellipsis.</summary>
     public const int MaxMessageLength = 1000;
 
-    private readonly RingBuffer<LogEntry> _entries;
-
-    /// <summary>Creates a store that keeps the newest <paramref name="capacity"/> lines.</summary>
-    public LogStore(int capacity) => _entries = new RingBuffer<LogEntry>(capacity);
+    private readonly RingBuffer<LogEntry> _entries = new(capacity);
 
     /// <summary>
     /// Raised after each line is added, on the thread that logged it. Handlers must be quick and mustn't log, or they'd

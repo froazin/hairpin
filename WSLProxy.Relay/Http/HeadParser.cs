@@ -380,7 +380,7 @@ public static class HeadParser
     {
         foreach (var b in value)
         {
-            if (!(b == '\t' || b == ' ' || (b >= 0x21 && b != 0x7F)))
+            if (b is not ((byte)'\t' or (byte)' ' or >= 0x21 and not 0x7F))
             {
                 return false;
             }

@@ -1,0 +1,47 @@
+# Editor settings and the code style the build enforces. EnforceCodeStyleInBuild and TreatWarningsAsErrors make every
+# rule set to warning here fail the build. Rules left out keep their default severity: they're style choices the code
+# doesn't follow, such as expression bodies everywhere.
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+# NuGet writes these.
+[packages.lock.json]
+end_of_line = unset
+insert_final_newline = unset
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+# The code's own style: var everywhere and file-scoped namespaces.
+csharp_style_var_for_built_in_types = true:warning
+csharp_style_var_when_type_is_apparent = true:warning
+csharp_style_var_elsewhere = true:warning
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Unnecessary code.
+dotnet_diagnostic.IDE0005.severity = warning # Unnecessary using directive
+dotnet_diagnostic.IDE0047.severity = warning # Unnecessary parentheses
+dotnet_diagnostic.IDE0200.severity = warning # Lambda that only calls a method
+
+# Simpler forms.
+dotnet_diagnostic.IDE0007.severity = warning # var instead of an explicit type
+dotnet_diagnostic.IDE0017.severity = warning # Object initialiser
+dotnet_diagnostic.IDE0028.severity = warning # Collection initialiser
+dotnet_diagnostic.IDE0032.severity = warning # Auto property
+dotnet_diagnostic.IDE0039.severity = warning # Local function instead of a lambda
+dotnet_diagnostic.IDE0078.severity = warning # Pattern matching
+dotnet_diagnostic.IDE0161.severity = warning # File-scoped namespace
+dotnet_diagnostic.IDE0290.severity = warning # Primary constructor
+dotnet_diagnostic.IDE0300.severity = warning # Collection expression for an array
+dotnet_diagnostic.IDE0301.severity = warning # Collection expression for an empty collection
+dotnet_diagnostic.IDE0303.severity = warning # Collection expression for Create()
+dotnet_diagnostic.IDE0305.severity = warning # Collection expression for a fluent call
+
+# MSTest: the newer assertions, and Windows-only tests marked as such.
+dotnet_diagnostic.MSTEST0046.severity = warning # Assert instead of StringAssert
+dotnet_diagnostic.MSTEST0068.severity = warning # Assert instead of CollectionAssert
+dotnet_diagnostic.MSTEST0084.severity = warning # OSCondition for platform-specific tests

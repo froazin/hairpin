@@ -81,13 +81,11 @@ public sealed record UserSettings(
 /// Reads and writes the user's settings file, <c>%LOCALAPPDATA%\WSLProxy\settings.json</c>. Configuration layers it over
 /// <c>appsettings.json</c> and reloads it when it changes, so saving here applies the settings live.
 /// </summary>
-public sealed class UserSettingsStore
+/// <param name="path">The settings file's path.</param>
+public sealed class UserSettingsStore(string path)
 {
-    /// <summary>Creates a store for the file at <paramref name="path"/>.</summary>
-    public UserSettingsStore(string path) => FilePath = path;
-
     /// <summary>The settings file's path.</summary>
-    public string FilePath { get; }
+    public string FilePath { get; } = path;
 
     /// <summary>
     /// Validates and saves the settings. The file is written to a temporary file first and then moved into place, so a crash

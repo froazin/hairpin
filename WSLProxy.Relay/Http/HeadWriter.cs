@@ -99,7 +99,7 @@ public static class HeadWriter
         if (!string.IsNullOrWhiteSpace(detail))
         {
             // The detail is relay-written, but strip control characters anyway so it can never break the framing.
-            body.Append(new string(detail.Where(c => !char.IsControl(c)).ToArray())).Append('\n');
+            body.Append(new string([.. detail.Where(c => !char.IsControl(c))])).Append('\n');
         }
 
         var bodyBytes = Encoding.UTF8.GetBytes(body.ToString());

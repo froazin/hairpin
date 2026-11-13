@@ -6,6 +6,7 @@ namespace WSLProxy.UI.Tests;
 
 /// <summary>How the metrics panel turns once-a-second samples of the relay's totals into rates, a chart and readable sizes.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class TrafficTests
 {
     [TestMethod]

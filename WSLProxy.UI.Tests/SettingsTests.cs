@@ -7,6 +7,7 @@ namespace WSLProxy.UI.Tests;
 
 /// <summary>Saving the user's settings file, and reading what the user types into the bypass list.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class SettingsTests
 {
     private string _directory = string.Empty;
@@ -56,7 +57,7 @@ public sealed class SettingsTests
         var problems = new UserSettingsStore(path).Save(settings, new RelayOptions());
 
         Assert.HasCount(1, problems);
-        StringAssert.Contains(problems[0], "Upstream:Https:Port");
+        Assert.Contains("Upstream:Https:Port", problems[0]);
         Assert.IsFalse(File.Exists(path));
     }
 
@@ -68,6 +69,6 @@ public sealed class SettingsTests
         Assert.AreEqual("example.com, 10.0.0.0/8", string.Join(", ", input.Added));
         Assert.AreEqual("host%25.example, ::1", string.Join(", ", input.Rejected));
         Assert.HasCount(2, input.Problems);
-        StringAssert.StartsWith(input.Problems[1], "::1: ");
+        Assert.StartsWith("::1: ", input.Problems[1]);
     }
 }

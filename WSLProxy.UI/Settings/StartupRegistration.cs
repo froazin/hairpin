@@ -9,29 +9,21 @@ namespace WSLProxy.UI.Settings;
 /// Startup apps switch: when the user has turned the entry off there, the app never turns it back on by itself.
 /// Registry errors never throw: the methods report failure instead.
 /// </summary>
-public sealed class StartupRegistration
+/// <param name="exePath">The exe to start at sign-in.</param>
+/// <param name="enabled">False for development builds, so they never touch the installed build's entry.</param>
+public sealed class StartupRegistration(string exePath, bool enabled)
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ApprovedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
     private const string ValueName = "WSL Proxy Relay";
 
-    private readonly string _exePath;
-
-    /// <summary>Creates a registration for the exe at <paramref name="exePath"/>.</summary>
-    /// <param name="exePath">The exe to start at sign-in.</param>
-    /// <param name="enabled">False for development builds, so they never touch the installed build's entry.</param>
-    public StartupRegistration(string exePath, bool enabled)
-    {
-        _exePath = exePath;
-        Enabled = enabled;
-        Command = "\"" + exePath + "\" --background";
-    }
+    private readonly string _exePath = exePath;
 
     /// <summary>The command the Run key holds.</summary>
-    public string Command { get; }
+    public string Command { get; } = "\"" + exePath + "\" --background";
 
     /// <summary>False when this build mustn't change the registry, such as a development build.</summary>
-    public bool Enabled { get; }
+    public bool Enabled { get; } = enabled;
 
     /// <summary>
     /// True when Windows will start this product at sign-in: the Run entry exists and the user hasn't turned it off in

@@ -5,6 +5,7 @@ namespace WSLProxy.UI.Tests;
 
 /// <summary>The in-memory log store's bounds, and how the log window filters it.</summary>
 [TestClass]
+[OSCondition(OperatingSystems.Windows)]
 public sealed class LogTests
 {
     [TestMethod]
@@ -24,7 +25,7 @@ public sealed class LogTests
         var kept = store.Snapshot();
         Assert.AreEqual("line 4, line 5", string.Join(", ", kept.Take(2).Select(e => e.Message)));
         Assert.HasCount(LogStore.MaxMessageLength, kept[2].Message);
-        StringAssert.EndsWith(kept[2].Message, "…");
+        Assert.EndsWith("…", kept[2].Message);
         Assert.AreEqual(6, changes);
 
         store.Clear();
