@@ -52,25 +52,6 @@ public static class LogView
         return rows;
     }
 
-    /// <summary>The name of the file <see cref="Export"/> writes to at <paramref name="now"/>, unique to the second.</summary>
-    public static string ExportFileName(DateTimeOffset now) =>
-        "WSL Proxy Relay logs " + now.ToString("yyyy-MM-dd HHmmss", CultureInfo.InvariantCulture) + ".txt";
-
-    /// <summary>
-    /// <paramref name="rows"/> as a text file: a line that says when they were exported and the time zone their times are
-    /// in, then one line each, as <see cref="LogRow.ToString"/> writes them.
-    /// </summary>
-    public static string Export(IReadOnlyList<LogRow> rows, DateTimeOffset now)
-    {
-        ArgumentNullException.ThrowIfNull(rows);
-        var lines = new List<string>(rows.Count + 1)
-        {
-            string.Format(CultureInfo.InvariantCulture, "WSL Proxy Relay logs, exported {0:yyyy-MM-dd HH:mm:ss}. Times are local, UTC{0:zzz}.", now),
-        };
-        lines.AddRange(rows.Select(row => row.ToString()));
-        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
-    }
-
     private static string Name(LogLevel level) => level switch
     {
         LogLevel.Trace => "TRACE",

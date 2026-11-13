@@ -29,8 +29,6 @@
         <!-- Actions on the lines shown, beside how many there are. -->
         <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
             <Button DockPanel.Dock="Right" Content="Open log folder" Margin="8,0,0,0" Click="OnOpenFolderClick" />
-            <Button DockPanel.Dock="Right" x:Name="ExportButton" Content="Export to desktop" Margin="8,0,0,0" Click="OnExportClick"
-                    ToolTip="Save the lines shown to a text file on the desktop" />
             <Button DockPanel.Dock="Right" x:Name="CopyButton" Content="Copy" Margin="8,0,0,0" Click="OnCopyClick"
                     ToolTip="Copy the lines shown to the clipboard" />
             <Button DockPanel.Dock="Right" Content="Clear" Margin="8,0,0,0" Click="OnClearClick"

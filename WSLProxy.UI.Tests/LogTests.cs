@@ -54,27 +54,5 @@ public sealed class LogTests
         Assert.AreEqual("Warning", LogView.Filter(entries, LogLevel.Warning, null)[0].Tone);
     }
 
-    [TestMethod]
-    public void Export_writes_a_header_with_the_time_zone_then_one_line_each()
-    {
-        var now = new DateTimeOffset(2026, 11, 13, 14, 30, 7, TimeSpan.FromHours(10));
-        LogRow[] rows =
-        [
-            new("14:30:01.000", "INFO", "RelayService", "Relay listening on 127.0.0.1:3128", string.Empty),
-            new("14:30:02.000", "WARN", "RelayService", "Upstream proxy is Unreachable", "Warning"),
-        ];
-
-        var text = LogView.Export(rows, now);
-
-        Assert.AreEqual("WSL Proxy Relay logs 2026-11-13 143007.txt", LogView.ExportFileName(now));
-        Assert.AreEqual(
-            string.Join(Environment.NewLine,
-                "WSL Proxy Relay logs, exported 2026-11-13 14:30:07. Times are local, UTC+10:00.",
-                "14:30:01.000 INFO RelayService: Relay listening on 127.0.0.1:3128",
-                "14:30:02.000 WARN RelayService: Upstream proxy is Unreachable",
-                string.Empty),
-            text);
-    }
-
     private static LogEntry Entry(LogLevel level, string message) => new(DateTime.UtcNow, level, "RelayService", message);
 }
