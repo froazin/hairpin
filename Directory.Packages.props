@@ -4,10 +4,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
   </ItemGroup>
 </Project>
